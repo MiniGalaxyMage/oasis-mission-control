@@ -1,0 +1,64 @@
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: #0d0d1f;
+  border-bottom: 4px solid #ffd700;
+  flex-shrink: 0;
+  min-height: 44px;
+}
+
+.header-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  color: #ffd700;
+  text-shadow: 2px 2px 0 #000;
+  letter-spacing: 1px;
+}
+
+.header-icon {
+  font-size: 16px;
+}
+
+.header-stats {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.stat-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 7px;
+  color: #e8e8e8;
+  background: #1a1a2e;
+  border: 2px solid #444;
+  padding: 3px 6px;
+}
+
+.stat-badge strong {
+  color: #ffd700;
+}
+
+.stat-icon {
+  font-size: 10px;
+}
+
+.heartbeat-ok {
+  border-color: #4caf50 !important;
+  color: #4caf50 !important;
+}
+
+.heartbeat-warn {
+  border-color: #ff9800 !important;
+  color: #ff9800 !important;
+}
+
+.heartbeat-error {
+  border-color: #f44336 !important;
+  color: #f44336 !important;
+}
