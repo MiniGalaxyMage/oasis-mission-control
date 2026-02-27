@@ -4,8 +4,8 @@ import { CommandCenter } from './scenes/CommandCenter';
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
   parent: 'game-container',
-  width: 800,
-  height: 600,
+  width: 1200,
+  height: 800,
   pixelArt: true,
   scale: {
     mode: Phaser.Scale.FIT,

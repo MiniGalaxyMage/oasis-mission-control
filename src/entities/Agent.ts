@@ -7,65 +7,67 @@ interface WaypointSet {
 }
 
 /**
- * Zonas de cada agente sobre el fondo castle-room-bg.
- * La imagen 1024x1024 se escala a 800x600 → factor ~0.78x / 0.585y
- *
- * Percival:   zona central (mesa de mapas)
- * Forge:      zona izquierda (yunque/herrería)
- * Sprite:     zona derecha (caballete)
+ * Waypoints ajustados al canvas 1200x800 (sala principal 950px de ancho).
+ * Percival: zona central (mesa de mapas)
+ * Forge:    zona izquierda (yunque/herrería)
+ * Sprite:   zona derecha (caballete)
  */
 const WAYPOINTS: Record<string, WaypointSet> = {
   percival: {
-    home: { x: 370, y: 320 },
+    home: { x: 460, y: 420 },
     wander: [
-      { x: 320, y: 370 },
-      { x: 430, y: 280 },
-      { x: 280, y: 310 },
-      { x: 400, y: 400 },
+      { x: 380, y: 480 },
+      { x: 540, y: 360 },
+      { x: 350, y: 400 },
+      { x: 510, y: 500 },
     ],
   },
   'forge-alpha': {
-    home: { x: 150, y: 400 },
+    home: { x: 170, y: 500 },
     wander: [
-      { x: 200, y: 350 },
-      { x: 120, y: 450 },
-      { x: 240, y: 420 },
-      { x: 160, y: 480 },
+      { x: 240, y: 440 },
+      { x: 130, y: 560 },
+      { x: 280, y: 520 },
+      { x: 190, y: 600 },
     ],
   },
   sprite: {
-    home: { x: 630, y: 290 },
+    home: { x: 740, y: 370 },
     wander: [
-      { x: 660, y: 360 },
-      { x: 590, y: 310 },
-      { x: 700, y: 420 },
-      { x: 620, y: 250 },
+      { x: 800, y: 450 },
+      { x: 670, y: 390 },
+      { x: 850, y: 530 },
+      { x: 720, y: 320 },
     ],
   },
 };
 
 const DEFAULT_WAYPOINTS: WaypointSet = {
-  home: { x: 400, y: 350 },
+  home: { x: 475, y: 450 },
   wander: [
-    { x: 350, y: 300 },
-    { x: 450, y: 400 },
-    { x: 500, y: 300 },
+    { x: 400, y: 380 },
+    { x: 550, y: 500 },
+    { x: 600, y: 380 },
   ],
 };
 
-// Mapeo agent ID → spritesheet key → animación idle
-const AGENT_SPRITE_CONFIG: Record<string, { sheet: string; animKey: string; scale: number }> = {
-  percival:    { sheet: 'percival-sheet', animKey: 'percival-idle', scale: 0.27 },
-  'forge-alpha': { sheet: 'forge-sheet',   animKey: 'forge-idle',    scale: 0.27 },
-  sprite:      { sheet: 'sprite-sheet',  animKey: 'sprite-idle',   scale: 0.27 },
+/**
+ * Imágenes estáticas recortadas de los sheets 1024x1024.
+ * Dimensiones de cada recorte:
+ *   percival-static: 185x306 → scale 0.29 ≈ 89px alto
+ *   forge-static:    529x312 → scale 0.29 ≈ 90px alto
+ *   sprite-static:   225x247 → scale 0.36 ≈ 89px alto
+ */
+const AGENT_IMAGE_CONFIG: Record<string, { key: string; scale: number }> = {
+  percival:      { key: 'percival-static', scale: 0.29 },
+  'forge-alpha': { key: 'forge-static',    scale: 0.29 },
+  sprite:        { key: 'sprite-static',   scale: 0.36 },
 };
-
-// scale 0.27 → 256 * 0.27 ≈ 69px — justo en el rango 60-80px pedido
 
 export class Agent {
   private scene: Phaser.Scene;
   private data: AgentData;
-  private spriteObj: Phaser.GameObjects.Sprite;
+  private imgObj: Phaser.GameObjects.Image;
   private nameLabel: Phaser.GameObjects.Text;
   private statusLabel: Phaser.GameObjects.Text;
   private tooltip: Phaser.GameObjects.Container | null = null;
@@ -80,19 +82,18 @@ export class Agent {
     this.waypoints = WAYPOINTS[data.id] ?? DEFAULT_WAYPOINTS;
 
     const { x, y } = this.waypoints.home;
-    const config = AGENT_SPRITE_CONFIG[data.id] ?? AGENT_SPRITE_CONFIG['percival'];
+    const config = AGENT_IMAGE_CONFIG[data.id] ?? AGENT_IMAGE_CONFIG['percival'];
 
-    // Crear Sprite (no Image) para poder usar animaciones
-    this.spriteObj = scene.add.sprite(x, y, config.sheet);
-    this.spriteObj.setScale(config.scale);
-    this.spriteObj.setDepth(10);
+    // Imagen estática (visible garantizado)
+    this.imgObj = scene.add.image(x, y, config.key);
+    this.imgObj.setScale(config.scale);
+    this.imgObj.setDepth(10);
+    this.imgObj.setOrigin(0.5, 1); // anclar en los pies
 
-    // Arrancar animación idle
-    this.spriteObj.play(config.animKey);
-
-    // Labels
-    this.nameLabel = this.createLabel(x, y + 40, data.name, '#ffdd44', '8px');
-    this.statusLabel = this.createLabel(x, y + 54, data.status, this.getStatusColor(), '6px');
+    // Labels debajo del personaje
+    const labelY = y + 8;
+    this.nameLabel = this.createLabel(x, labelY, data.name, '#ffdd44', '8px');
+    this.statusLabel = this.createLabel(x, labelY + 16, data.status, this.getStatusColor(), '6px');
 
     this.setupInteraction();
     this.startMovementLoop();
@@ -110,7 +111,9 @@ export class Agent {
       fontFamily: '"Press Start 2P", monospace',
       color,
       stroke: '#000000',
-      strokeThickness: 2,
+      strokeThickness: 3,
+      backgroundColor: '#00000066',
+      padding: { x: 3, y: 2 },
     }).setOrigin(0.5, 0).setDepth(11);
   }
 
@@ -126,14 +129,14 @@ export class Agent {
   }
 
   private setupInteraction(): void {
-    this.spriteObj.setInteractive({ useHandCursor: true });
+    this.imgObj.setInteractive({ useHandCursor: true });
 
-    this.spriteObj.on('pointerdown', () => this.showTooltip());
-    this.spriteObj.on('pointerover', () => {
-      this.spriteObj.setTint(0xddddff);
+    this.imgObj.on('pointerdown', () => this.showTooltip());
+    this.imgObj.on('pointerover', () => {
+      this.imgObj.setTint(0xddddff);
     });
-    this.spriteObj.on('pointerout', () => {
-      this.spriteObj.clearTint();
+    this.imgObj.on('pointerout', () => {
+      this.imgObj.clearTint();
     });
   }
 
@@ -171,13 +174,12 @@ export class Agent {
     );
 
     this.tooltip = this.scene.add.container(
-      this.spriteObj.x - boxWidth / 2,
-      this.spriteObj.y - boxHeight - 50,
+      this.imgObj.x - boxWidth / 2,
+      this.imgObj.y - this.imgObj.displayHeight - boxHeight - 10,
       [bg, ...texts]
     );
     this.tooltip.setDepth(50);
 
-    // Auto-cierre en 3s
     this.scene.time.delayedCall(3000, () => {
       if (this.tooltip) {
         this.tooltip.destroy();
@@ -192,7 +194,6 @@ export class Agent {
   }
 
   private scheduleNextMove(): void {
-    // Si está trabajando: volver a home y esperar
     if (this.data.status === 'working' || this.data.status === 'orchestrating') {
       this.moveToPoint(this.waypoints.home, () => {
         this.moveTimer = this.scene.time.delayedCall(10000, () => this.scheduleNextMove());
@@ -200,7 +201,6 @@ export class Agent {
       return;
     }
 
-    // Idle: recorrer waypoints en orden cíclico
     const wander = this.waypoints.wander;
     this.waypointIndex = (this.waypointIndex + 1) % wander.length;
     const target = wander[this.waypointIndex];
@@ -216,30 +216,29 @@ export class Agent {
     this.isMoving = true;
 
     const dist = Phaser.Math.Distance.Between(
-      this.spriteObj.x, this.spriteObj.y,
+      this.imgObj.x, this.imgObj.y,
       target.x, target.y
     );
-    const duration = Phaser.Math.Clamp(dist * 18, 2500, 5000);
+    const duration = Phaser.Math.Clamp(dist * 18, 2500, 6000);
 
-    // Flipear sprite según dirección
-    if (target.x < this.spriteObj.x) {
-      this.spriteObj.setFlipX(true);
+    // Flipear imagen según dirección
+    if (target.x < this.imgObj.x) {
+      this.imgObj.setFlipX(true);
     } else {
-      this.spriteObj.setFlipX(false);
+      this.imgObj.setFlipX(false);
     }
 
-    // Un solo tween para sprite + labels (mueven x e y juntos)
     this.scene.tweens.add({
-      targets: this.spriteObj,
+      targets: this.imgObj,
       x: target.x,
       y: target.y,
       duration,
       ease: 'Sine.easeInOut',
       onUpdate: () => {
-        this.nameLabel.setPosition(this.spriteObj.x, this.spriteObj.y + 40);
-        this.statusLabel.setPosition(this.spriteObj.x, this.spriteObj.y + 54);
+        this.nameLabel.setPosition(this.imgObj.x, this.imgObj.y + 8);
+        this.statusLabel.setPosition(this.imgObj.x, this.imgObj.y + 24);
         if (this.tooltip) {
-          this.tooltip.setPosition(this.spriteObj.x - 85, this.spriteObj.y - 100);
+          this.tooltip.setPosition(this.imgObj.x - 85, this.imgObj.y - this.imgObj.displayHeight - 60);
         }
       },
       onComplete: () => {
@@ -259,7 +258,7 @@ export class Agent {
   destroy(): void {
     if (this.moveTimer) this.moveTimer.destroy();
     if (this.tooltip) this.tooltip.destroy();
-    this.spriteObj.destroy();
+    this.imgObj.destroy();
     this.nameLabel.destroy();
     this.statusLabel.destroy();
   }
