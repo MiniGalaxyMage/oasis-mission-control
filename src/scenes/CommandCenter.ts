@@ -1,499 +1,345 @@
 import Phaser from 'phaser';
-import { SnapshotData } from '../types';
+import { SnapshotData, AgentData } from '../types';
+import { CastleRoom } from '../entities/CastleRoom';
 import { Agent } from '../entities/Agent';
+import { ForgeArea } from '../entities/ForgeArea';
 import { TaskBoard } from '../entities/TaskBoard';
 import { PRMonitor } from '../entities/PRMonitor';
 import { HeartbeatPulse } from '../entities/HeartbeatPulse';
-import { CastleRoom } from '../entities/CastleRoom';
-import { ForgeSmith } from '../entities/Forge';
 import { TreasureChest } from '../entities/TreasureChest';
 
-// Konami code sequence
-const KONAMI = [
-  'ArrowUp','ArrowUp','ArrowDown','ArrowDown',
-  'ArrowLeft','ArrowRight','ArrowLeft','ArrowRight',
-  'KeyB','KeyA',
-];
-
+/**
+ * CommandCenter — Escena principal OASIS Mission Control.
+ * Estilo Zelda: A Link to the Past — habitación de castillo.
+ *
+ * Reglas de oro:
+ * - Cada agente se crea UNA SOLA VEZ
+ * - Los sprites se mueven con tweens LENTOS
+ * - Sin overlays HTML, todo en Phaser
+ */
 export class CommandCenter extends Phaser.Scene {
+  // Datos
   private snapshot: SnapshotData | null = null;
-  private agentSprites: Map<string, Agent> = new Map();
-  private taskBoard: TaskBoard | null = null;
-  private prMonitor: PRMonitor | null = null;
-  private heartbeat: HeartbeatPulse | null = null;
-  private castleRoom: CastleRoom | null = null;
-  private forgeSmith: ForgeSmith | null = null;
-  private treasureChest: TreasureChest | null = null;
-  private refreshTimer = 0;
-  private readonly REFRESH_INTERVAL = 30000;
-  private konamiBuffer: string[] = [];
-  private konamiMsg: Phaser.GameObjects.Text | null = null;
-  private titleText: Phaser.GameObjects.Text | null = null;
-  private clockText: Phaser.GameObjects.Text | null = null;
+  private refreshTimer: Phaser.Time.TimerEvent | null = null;
+
+  // Entidades de la escena
+  private castleRoom!: CastleRoom;
+  private forgeArea!: ForgeArea;
+  private taskBoard!: TaskBoard;
+  private prMonitor!: PRMonitor;
+  private heartbeat!: HeartbeatPulse;
+  private treasureChest!: TreasureChest;
+
+  // Agentes — mapa por ID, se crean UNA VEZ
+  private agents: Map<string, Agent> = new Map();
+
+  // Antorchas
+  private torch1Gfx!: Phaser.GameObjects.Graphics;
+  private torch2Gfx!: Phaser.GameObjects.Graphics;
+
+  // UI estática
+  private titleText!: Phaser.GameObjects.Text;
+  private statsText!: Phaser.GameObjects.Text;
+  private timestampText!: Phaser.GameObjects.Text;
 
   constructor() {
     super({ key: 'CommandCenter' });
   }
 
+  // ─────────────────────────────────────────────────────────────
+  // PRELOAD
+  // ─────────────────────────────────────────────────────────────
   preload(): void {
-    // === Sprites de personajes ===
-    this.load.spritesheet('percival-idle', './assets/sprites/percival-idle.png', {
-      frameWidth: 341, frameHeight: 512,
-    });
-    this.load.spritesheet('forge-idle', './assets/sprites/forge-idle.png', {
-      frameWidth: 256, frameHeight: 1024,
-    });
-    this.load.spritesheet('forge-working', './assets/sprites/forge-working.png', {
-      frameWidth: 341, frameHeight: 512,
-    });
-    this.load.spritesheet('sprite-idle', './assets/sprites/sprite-idle.png', {
-      frameWidth: 256, frameHeight: 1024,
-    });
+    // Sprites de agentes — 1024x1024, los cargamos como imagen simple
+    // (mejor estático y limpio que animado con glitches)
+    this.load.image('percival-idle',  'src/assets/sprites/percival-idle.png');
+    this.load.image('forge-idle',     'src/assets/sprites/forge-idle.png');
+    this.load.image('forge-working',  'src/assets/sprites/forge-working.png');
+    this.load.image('sprite-idle',    'src/assets/sprites/sprite-idle.png');
 
-    // === Objetos / props ===
-    this.load.image('anvil', './assets/objects/anvil.png');
-    this.load.image('strategy-table', './assets/objects/strategy-table.png');
-    this.load.spritesheet('treasure-chest', './assets/objects/treasure-chest.png', {
-      frameWidth: 512, frameHeight: 1024,
-    });
-    this.load.image('easel', './assets/objects/easel.png');
+    // Objetos
+    this.load.image('anvil',          'src/assets/objects/anvil.png');
+    this.load.image('easel',          'src/assets/objects/easel.png');
+    this.load.image('strategy-table', 'src/assets/objects/strategy-table.png');
+    this.load.image('treasure-chest', 'src/assets/objects/treasure-chest.png');
+
+    // Pantalla de carga minimalista
+    const loadText = this.add.text(400, 300, 'Cargando OASIS...', {
+      fontSize: '12px',
+      fontFamily: '"Press Start 2P", monospace',
+      color: '#4444aa',
+    }).setOrigin(0.5);
+
+    this.load.on('complete', () => loadText.destroy());
   }
 
-  private registerAnimations(): void {
-    // Percival idle (6 frames, 3x2)
-    if (!this.anims.exists('percival-idle')) {
-      this.anims.create({
-        key: 'percival-idle',
-        frames: this.anims.generateFrameNumbers('percival-idle', { start: 0, end: 5 }),
-        frameRate: 6,
-        repeat: -1,
-      });
-    }
-    // Forge idle (4 frames, 4x1)
-    if (!this.anims.exists('forge-idle')) {
-      this.anims.create({
-        key: 'forge-idle',
-        frames: this.anims.generateFrameNumbers('forge-idle', { start: 0, end: 3 }),
-        frameRate: 6,
-        repeat: -1,
-      });
-    }
-    // Forge working (6 frames, 3x2)
-    if (!this.anims.exists('forge-working')) {
-      this.anims.create({
-        key: 'forge-working',
-        frames: this.anims.generateFrameNumbers('forge-working', { start: 0, end: 5 }),
-        frameRate: 10,
-        repeat: -1,
-      });
-    }
-    // Sprite/hada idle (4 frames, 4x1)
-    if (!this.anims.exists('sprite-idle')) {
-      this.anims.create({
-        key: 'sprite-idle',
-        frames: this.anims.generateFrameNumbers('sprite-idle', { start: 0, end: 3 }),
-        frameRate: 6,
-        repeat: -1,
-      });
-    }
-  }
-
-  create(): void {
-    this.registerAnimations();
-    this.loadSnapshot().then(snap => {
-      this.snapshot = snap;
-      this.buildCastleScene();
-    });
-
-    // Konami Easter Egg
-    this.input.keyboard!.on('keydown', (e: KeyboardEvent) => {
-      this.konamiBuffer.push(e.code);
-      if (this.konamiBuffer.length > KONAMI.length) this.konamiBuffer.shift();
-      if (JSON.stringify(this.konamiBuffer) === JSON.stringify(KONAMI)) {
-        this.triggerKonami();
-      }
-    });
-
-    // Torch easter egg: click any torch area
-    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      if (!this.castleRoom) return;
-      const { torch1X, torch2X, torchY } = this.castleRoom.layout;
-      for (const tx of [torch1X, torch2X]) {
-        if (Math.abs(pointer.x - tx) < 20 && Math.abs(pointer.y - torchY) < 30) {
-          this.torchEasterEgg(tx, torchY);
-        }
-      }
-    });
-
-    // Scale / resize
-    this.scale.on('resize', () => {
-      this.scene.restart();
-    });
-  }
-
-  private async loadSnapshot(): Promise<SnapshotData> {
-    try {
-      const res = await fetch('./data/snapshot.json?t=' + Date.now());
-      return await res.json() as SnapshotData;
-    } catch (e) {
-      console.warn('Failed to load snapshot.json', e);
-      return {
-        timestamp: new Date().toISOString(),
-        heartbeat: { lastCheck: new Date().toISOString(), status: 'warn' },
-        agents: [],
-        tasks: [],
-        pullRequests: [],
-        stats: { prsToday: 0, tasksCompleted: 0, agentsActive: 0 },
-      };
-    }
-  }
-
-  private buildCastleScene(): void {
-    if (!this.snapshot) return;
-    const W = this.scale.width;
-    const H = this.scale.height;
-
-    // === CASTLE ROOM BACKGROUND ===
+  // ─────────────────────────────────────────────────────────────
+  // CREATE
+  // ─────────────────────────────────────────────────────────────
+  async create(): Promise<void> {
+    // 1. Habitación base
     this.castleRoom = new CastleRoom(this);
-    const layout = this.castleRoom.layout;
+    this.castleRoom.create();
 
-    // === FORGE / SMITHY ===
-    this.forgeSmith = new ForgeSmith(this, layout.smithyX, layout.smithyY);
+    // 2. Antorchas (pared superior)
+    this.createTorches();
 
-    // === TASK BOARD (quest board on right wall) ===
-    const tbW = Math.floor(W * 0.28);
-    const tbH = Math.floor((layout.floorY - layout.wallTopY) * 0.72);
-    this.taskBoard = new TaskBoard(
-      this,
-      layout.questBoardX,
-      layout.questBoardY,
-      tbW,
-      tbH,
-    );
-    this.taskBoard.updateTasks(this.snapshot.tasks);
+    // 3. Objetos del escenario
+    this.createSceneObjects();
 
-    // === PR MONITOR (scrolls on left wall) ===
-    const prW = Math.floor(W * 0.28);
-    const prH = Math.floor((layout.floorY - layout.wallTopY) * 0.72);
-    this.prMonitor = new PRMonitor(
-      this,
-      layout.scrollsX,
-      layout.scrollsY,
-      prW,
-      prH,
-    );
-    this.prMonitor.updatePRs(this.snapshot.pullRequests);
+    // 4. UI estática (título, stats)
+    this.createUI();
 
-    // === HEARTBEAT CRYSTAL ===
-    this.heartbeat = new HeartbeatPulse(this, layout.gemX, layout.gemY, this.snapshot.heartbeat);
-    this.heartbeat.setDepth(6);
+    // 5. Entidades informativas (con datos vacíos hasta que llegue el snapshot)
+    this.taskBoard  = new TaskBoard(this);
+    this.prMonitor  = new PRMonitor(this);
+    this.heartbeat  = new HeartbeatPulse(this);
+    this.treasureChest = new TreasureChest(this);
 
-    // === TREASURE CHEST ===
-    this.treasureChest = new TreasureChest(this, layout.chestX, layout.chestY);
-    const hasMerged = this.snapshot.pullRequests.some(pr => pr.status === 'merged');
-    this.treasureChest.setHasMergedPRs(hasMerged);
+    // 6. Cargar snapshot y arrancar agentes
+    await this.loadSnapshot();
 
-    // === AGENTS ===
-    this.buildAgents();
-
-    // === HUD ===
-    this.buildHUD(W, H);
-  }
-
-  private buildAgents(): void {
-    if (!this.snapshot || !this.castleRoom) return;
-    const layout = this.castleRoom.layout;
-    const { W, H, floorY } = layout;
-    const floorCenterY = Math.floor(floorY + (H - floorY) * 0.55);
-
-    this.snapshot.agents.forEach((agentData) => {
-      const isPercival = agentData.id === 'percival';
-      const isSpriteChar = agentData.id === 'sprite';
-
-      let startX: number;
-      if (isPercival) startX = Math.floor(W * 0.5);
-      else if (isSpriteChar) startX = Math.floor(W * 0.78);
-      else startX = Math.floor(W * 0.3);
-      const startY = floorCenterY;
-
-      const agent = new Agent(this, startX, startY, agentData);
-      agent.setDepth(7);
-      this.add.existing(agent);
-      this.agentSprites.set(agentData.id, agent);
-
-      if (isPercival) {
-        const wanderPoints = [
-          { x: layout.tableX - 80, y: floorCenterY },
-          { x: layout.tableX, y: floorCenterY - 10 },
-          { x: layout.tableX + 80, y: floorCenterY },
-          { x: layout.tableX + 40, y: Math.floor(floorY + (H - floorY) * 0.75) },
-          { x: Math.floor(W * 0.55), y: Math.floor(floorY + (H - floorY) * 0.85) },
-        ];
-        agent.setIdleWaypoints(wanderPoints);
-        if (agentData.status === 'orchestrating' || agentData.status === 'thinking') {
-          agent.setTaskTarget({ x: layout.tableX, y: floorCenterY });
-        }
-      } else if (isSpriteChar) {
-        // Sprite (hada) ronda por el lado derecho, cerca del caballete
-        const spriteWander = [
-          { x: layout.easelX - 40, y: floorCenterY },
-          { x: layout.easelX + 20, y: floorCenterY - 15 },
-          { x: layout.easelX - 10, y: Math.floor(floorY + (H - floorY) * 0.80) },
-          { x: Math.floor(W * 0.82), y: floorCenterY },
-        ];
-        agent.setIdleWaypoints(spriteWander);
-        // Si está working → junto al caballete
-        if (agentData.status === 'working') {
-          agent.setTaskTarget({ x: layout.easelX, y: floorCenterY });
-        }
-      } else {
-        // Forge agents
-        const forgeWander = [
-          { x: Math.floor(W * 0.25), y: floorCenterY },
-          { x: Math.floor(W * 0.35), y: floorCenterY },
-          { x: Math.floor(W * 0.3), y: Math.floor(floorY + (H - floorY) * 0.8) },
-          { x: Math.floor(W * 0.4), y: Math.floor(floorY + (H - floorY) * 0.75) },
-        ];
-        const forgeKeys = [...this.agentSprites.keys()].filter(k => k !== 'percival' && k !== 'sprite');
-        const forgeIndex = forgeKeys.indexOf(agentData.id);
-        const offsetX = forgeIndex * 60;
-        agent.setIdleWaypoints(forgeWander.map(wp => ({ x: wp.x + offsetX, y: wp.y })));
-        if (agentData.status === 'working') {
-          const anvX = layout.smithyX + 10 + forgeIndex * 20;
-          agent.setTaskTarget({ x: anvX, y: layout.smithyY - 10 });
-          if (this.forgeSmith) this.forgeSmith.setActive(true);
-        }
-      }
+    // 7. Auto-refresh cada 30 segundos
+    this.refreshTimer = this.time.addEvent({
+      delay: 30000,
+      loop: true,
+      callback: () => this.loadSnapshot(),
     });
   }
 
-  private buildHUD(W: number, H: number): void {
-    if (!this.snapshot) return;
-    // Top bar
-    const bar = this.add.graphics().setDepth(20);
-    bar.fillStyle(0x0a0808, 0.85);
-    bar.fillRect(0, 0, W, 30);
-    bar.lineStyle(1, 0x6b3a18, 0.8);
-    bar.lineBetween(0, 30, W, 30);
-
-    // Title
-    this.titleText = this.add.text(14, 15, '⚔  OASIS MISSION CONTROL  ⚔', {
-      fontFamily: '"Press Start 2P"',
-      fontSize: '8px',
-      color: '#cc8822',
-      stroke: '#000000',
-      strokeThickness: 2,
-    }).setOrigin(0, 0.5).setDepth(21);
-    this.titleText.setInteractive({ useHandCursor: true });
-    this.titleText.on('pointerdown', () => this.triggerGlitch());
-
-    // Clock
-    this.clockText = this.add.text(W - 14, 15, '', {
-      fontFamily: '"Press Start 2P"',
-      fontSize: '7px',
-      color: '#887744',
-      stroke: '#000000',
-      strokeThickness: 2,
-    }).setOrigin(1, 0.5).setDepth(21);
-
-    // Bottom status bar
-    const botBar = this.add.graphics().setDepth(20);
-    botBar.fillStyle(0x0a0808, 0.85);
-    botBar.fillRect(0, H - 24, W, 24);
-    botBar.lineStyle(1, 0x6b3a18, 0.8);
-    botBar.lineBetween(0, H - 24, W, H - 24);
-
-    const s = this.snapshot.stats;
-    const statsLine = `⚜ ${s.agentsActive} agentes  |  ✓ ${s.tasksCompleted} tareas  |  PR ${s.prsToday} hoy`;
-    this.add.text(W / 2, H - 12, statsLine, {
-      fontFamily: '"Press Start 2P"',
-      fontSize: '5px',
-      color: '#887744',
-    }).setOrigin(0.5, 0.5).setDepth(21);
-
-    // Last updated
-    const ts = new Date(this.snapshot.timestamp).toLocaleTimeString('es-ES');
-    this.add.text(W - 12, H - 12, `↺ ${ts}`, {
-      fontFamily: '"Press Start 2P"',
-      fontSize: '4px',
-      color: '#665533',
-    }).setOrigin(1, 0.5).setDepth(21);
+  // ─────────────────────────────────────────────────────────────
+  // ANTORCHAS
+  // ─────────────────────────────────────────────────────────────
+  private createTorches(): void {
+    this.torch1Gfx = this.createTorch(100, 75);
+    this.torch2Gfx = this.createTorch(700, 75);
   }
 
-  update(_time: number, delta: number): void {
-    // Torches
-    if (this.castleRoom) this.castleRoom.updateTorches(delta);
+  private createTorch(x: number, y: number): Phaser.GameObjects.Graphics {
+    const gfx = this.add.graphics();
+    gfx.setDepth(12);
 
-    // Forge fire
-    if (this.forgeSmith) this.forgeSmith.update(delta);
+    // Palo de la antorcha
+    gfx.fillStyle(0x6b4c11);
+    gfx.fillRect(x - 3, y - 10, 6, 20);
 
-    // Agents
-    this.agentSprites.forEach(agent => agent.update(delta));
+    // Llama (naranja/amarillo)
+    gfx.fillStyle(0xff6600, 0.9);
+    gfx.fillTriangle(x - 8, y - 10, x, y - 26, x + 8, y - 10);
+    gfx.fillStyle(0xffaa00, 0.95);
+    gfx.fillTriangle(x - 5, y - 10, x, y - 22, x + 5, y - 10);
+    gfx.fillStyle(0xffee44);
+    gfx.fillTriangle(x - 2, y - 10, x, y - 16, x + 2, y - 10);
 
-    // Heartbeat crystal
-    if (this.heartbeat) this.heartbeat.update(delta);
+    // Parpadeo de la llama
+    this.tweens.add({
+      targets: gfx,
+      alpha: { from: 0.7, to: 1.0 },
+      duration: Phaser.Math.Between(200, 500),
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
 
-    // Treasure chest
-    if (this.treasureChest) this.treasureChest.update(delta);
+    // Halo de luz
+    const halo = this.add.graphics();
+    halo.setDepth(3);
+    halo.fillStyle(0xff8800, 0.08);
+    halo.fillCircle(x, y - 15, 40);
+    this.tweens.add({
+      targets: halo,
+      alpha: { from: 0.5, to: 1.0 },
+      duration: Phaser.Math.Between(300, 600),
+      yoyo: true,
+      repeat: -1,
+    });
 
-    // Clock
-    if (this.clockText) {
-      const now = new Date();
-      this.clockText.setText(now.toLocaleTimeString('es-ES'));
+    return gfx;
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // OBJETOS DEL ESCENARIO
+  // ─────────────────────────────────────────────────────────────
+  private createSceneObjects(): void {
+    // --- HERRERÍA (esquina inf-izq) ---
+    this.forgeArea = new ForgeArea(this);
+    this.forgeArea.create();
+
+    // --- MESA DE ESTRATEGIA (centro-derecha) ---
+    if (this.textures.exists('strategy-table')) {
+      const table = this.add.image(320, 290, 'strategy-table');
+      table.setScale(0.1);
+      table.setDepth(5);
+    } else {
+      const gfx = this.add.graphics();
+      gfx.fillStyle(0x5c3a1e);
+      gfx.fillRect(260, 270, 120, 60);
+      gfx.lineStyle(2, 0x8a6230);
+      gfx.strokeRect(260, 270, 120, 60);
+      gfx.setDepth(5);
+      this.add.text(320, 300, 'MESA', {
+        fontSize: '7px',
+        fontFamily: '"Press Start 2P", monospace',
+        color: '#aa8844',
+      }).setOrigin(0.5).setDepth(6);
     }
 
-    // Auto-refresh
-    this.refreshTimer += delta;
-    if (this.refreshTimer >= this.REFRESH_INTERVAL) {
-      this.refreshTimer = 0;
-      this.doRefresh();
+    // --- CABALLETE (derecha, para Sprite) ---
+    if (this.textures.exists('easel')) {
+      const easel = this.add.image(670, 270, 'easel');
+      easel.setScale(0.08);
+      easel.setDepth(5);
+    } else {
+      const gfx = this.add.graphics();
+      gfx.lineStyle(3, 0x8a6230);
+      gfx.lineBetween(655, 220, 670, 310); // pata izq
+      gfx.lineBetween(685, 220, 670, 310); // pata der
+      gfx.lineBetween(650, 280, 690, 280); // soporte
+      gfx.fillStyle(0xd4b483);
+      gfx.fillRect(648, 218, 44, 55);
+      gfx.lineStyle(1, 0x6b4020);
+      gfx.strokeRect(648, 218, 44, 55);
+      gfx.setDepth(5);
+      this.add.text(670, 325, 'CABALLETE', {
+        fontSize: '6px',
+        fontFamily: '"Press Start 2P", monospace',
+        color: '#aa8844',
+      }).setOrigin(0.5).setDepth(6);
     }
+
+    // --- PERGAMINOS decorativos en pared derecha (detrás del PRMonitor) ---
+    const scrollDeco = this.add.graphics();
+    scrollDeco.fillStyle(0xd4b483, 0.3);
+    scrollDeco.fillRect(585, 100, 170, 220);
+    scrollDeco.lineStyle(1, 0x6b4020, 0.5);
+    scrollDeco.strokeRect(585, 100, 170, 220);
+    scrollDeco.setDepth(4);
   }
 
-  private async doRefresh(): Promise<void> {
-    const snap = await this.loadSnapshot();
-    this.snapshot = snap;
-
-    snap.agents.forEach(agentData => {
-      const sprite = this.agentSprites.get(agentData.id);
-      if (sprite) {
-        sprite.updateData(agentData);
-        // Reposition to task if status changed
-        if (!this.castleRoom) return;
-        const layout = this.castleRoom.layout;
-        const { W, H, floorY } = layout;
-        const floorCenterY = Math.floor(floorY + (H - floorY) * 0.55);
-        if (agentData.id === 'percival') {
-          if (agentData.status === 'orchestrating' || agentData.status === 'thinking') {
-            sprite.setTaskTarget({ x: layout.tableX, y: floorCenterY });
-          }
-        } else if (agentData.id === 'sprite') {
-          if (agentData.status === 'working') {
-            sprite.setTaskTarget({ x: layout.easelX, y: floorCenterY });
-          }
-        } else {
-          if (agentData.status === 'working') {
-            sprite.setTaskTarget({ x: layout.smithyX + 10, y: layout.smithyY - 10 });
-            if (this.forgeSmith) this.forgeSmith.setActive(true);
-          } else {
-            if (this.forgeSmith) this.forgeSmith.setActive(false);
-          }
-        }
-      }
-    });
-
-    if (this.taskBoard) this.taskBoard.updateTasks(snap.tasks);
-    if (this.prMonitor) this.prMonitor.updatePRs(snap.pullRequests);
-    if (this.heartbeat) this.heartbeat.updateData(snap.heartbeat);
-    if (this.treasureChest) {
-      const hasMerged = snap.pullRequests.some(pr => pr.status === 'merged');
-      this.treasureChest.setHasMergedPRs(hasMerged);
-    }
-  }
-
-  // Easter egg 1: Konami code
-  private triggerKonami(): void {
-    if (this.konamiMsg) return;
-    const W = this.scale.width;
-    const H = this.scale.height;
-    this.konamiMsg = this.add.text(
-      W / 2, H / 2,
-      '> Going outside is highly overrated <',
-      {
-        fontFamily: '"Press Start 2P"',
-        fontSize: '10px',
-        color: '#00ff88',
-        backgroundColor: '#000000',
-        padding: { x: 20, y: 12 },
-        align: 'center',
-      }
-    ).setOrigin(0.5).setDepth(500);
-
-    this.spawnMatrixRain();
-
-    this.time.delayedCall(4000, () => {
-      if (this.konamiMsg) {
-        this.tweens.add({
-          targets: this.konamiMsg,
-          alpha: 0,
-          duration: 600,
-          onComplete: () => {
-            this.konamiMsg?.destroy();
-            this.konamiMsg = null;
-          },
-        });
-      }
-    });
-  }
-
-  // Easter egg 2: Torch color change on click
-  private torchEasterEgg(tx: number, ty: number): void {
-    const g = this.add.graphics().setDepth(10);
-    const colors = [0xff00ff, 0x00ffff, 0x00ff00, 0xffffff];
-    let ci = 0;
-    const timer = this.time.addEvent({
-      delay: 100,
-      repeat: 8,
-      callback: () => {
-        g.clear();
-        g.fillStyle(colors[ci % colors.length], 0.3);
-        g.fillCircle(tx, ty - 20, 25);
-        ci++;
-      },
-    });
-    this.time.delayedCall(1000, () => { timer.destroy(); g.destroy(); });
-  }
-
-  // Easter egg 3: Title glitch
-  private triggerGlitch(): void {
-    const originalText = '⚔  OASIS MISSION CONTROL  ⚔';
-    const glitchChars = '!@#$%^&*<>?/|\\{}[]';
-    let count = 0;
-    const interval = setInterval(() => {
-      if (count++ >= 10 || !this.titleText) {
-        clearInterval(interval);
-        if (this.titleText) this.titleText.setText(originalText);
-        return;
-      }
-      const glitched = originalText.split('').map(c =>
-        Math.random() < 0.3 ? glitchChars[Math.floor(Math.random() * glitchChars.length)] : c
-      ).join('');
-      if (this.titleText) this.titleText.setText(glitched);
-    }, 60);
-  }
-
-  // Matrix rain
-  private spawnMatrixRain(): void {
-    const W = this.scale.width;
-    const H = this.scale.height;
-    const cols = Math.floor(W / 12);
-    const drops: number[] = new Array(cols).fill(0).map(() => Phaser.Math.Between(-H, 0));
-    const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ@#$%&⚔⚒⚜♥';
-    const g = this.add.graphics().setDepth(490);
-    const style: Phaser.Types.GameObjects.Text.TextStyle = {
-      fontFamily: 'monospace',
+  // ─────────────────────────────────────────────────────────────
+  // UI ESTÁTICA
+  // ─────────────────────────────────────────────────────────────
+  private createUI(): void {
+    // Título centrado en la parte superior
+    this.titleText = this.add.text(400, 18, '🎮 OASIS MISSION CONTROL', {
       fontSize: '11px',
-      color: '#00ff88',
-    };
-    const texts: Phaser.GameObjects.Text[] = [];
+      fontFamily: '"Press Start 2P", monospace',
+      color: '#ffdd44',
+      stroke: '#000000',
+      strokeThickness: 3,
+    }).setOrigin(0.5, 0).setDepth(20);
 
-    const timer = this.time.addEvent({
-      delay: 60,
-      callback: () => {
-        g.clear();
-        g.fillStyle(0x000000, 0.05);
-        g.fillRect(0, 0, W, H);
-        drops.forEach((y, i) => {
-          const char = chars[Math.floor(Math.random() * chars.length)];
-          const txt = this.add.text(i * 12, y, char, style).setDepth(495);
-          texts.push(txt);
-          this.time.delayedCall(200, () => txt.destroy());
-          drops[i] += 14;
-          if (drops[i] > H && Math.random() > 0.975) drops[i] = 0;
-        });
-      },
-      repeat: 55,
+    // Stats bajo el título
+    this.statsText = this.add.text(400, 38, 'Agentes: — | PRs: — | Tareas: —', {
+      fontSize: '7px',
+      fontFamily: '"Press Start 2P", monospace',
+      color: '#8888bb',
+    }).setOrigin(0.5, 0).setDepth(20);
+
+    // Timestamp (esquina inferior derecha)
+    this.timestampText = this.add.text(790, 590, '', {
+      fontSize: '6px',
+      fontFamily: '"Press Start 2P", monospace',
+      color: '#555577',
+    }).setOrigin(1, 1).setDepth(20);
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // CARGA DE DATOS
+  // ─────────────────────────────────────────────────────────────
+  private async loadSnapshot(): Promise<void> {
+    try {
+      const res = await fetch('/data/snapshot.json?t=' + Date.now());
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data: SnapshotData = await res.json();
+      this.applySnapshot(data);
+    } catch (err) {
+      console.warn('[CommandCenter] No se pudo cargar snapshot:', err);
+      if (!this.snapshot) {
+        this.applyFallbackSnapshot();
+      }
+    }
+  }
+
+  private applySnapshot(data: SnapshotData): void {
+    this.snapshot = data;
+
+    // Actualizar UI de stats
+    this.statsText.setText(
+      `Agentes: ${data.stats.agentsActive} | PRs hoy: ${data.stats.prsToday} | Tareas: ${data.stats.tasksCompleted}`
+    );
+    this.timestampText.setText(new Date(data.timestamp).toLocaleTimeString('es-ES'));
+
+    // Agentes: crear solo los que no existen, actualizar los que sí
+    const knownIds = new Set(this.agents.keys());
+    const AGENT_KEYS = ['percival', 'forge-alpha', 'sprite'] as const;
+
+    // Filtrar los agentes que queremos mostrar (los que tienen sprites)
+    const displayAgents = data.agents.filter(a =>
+      AGENT_KEYS.includes(a.id as typeof AGENT_KEYS[number])
+    );
+
+    // Si hay un forge-beta pero no forge-alpha, usar forge-beta como forge-alpha
+    const forgeAgent = data.agents.find(a => a.id === 'forge-alpha')
+      ?? data.agents.find(a => a.id.startsWith('forge'));
+
+    const agentsToDisplay: AgentData[] = [];
+
+    // Percival
+    const percival = data.agents.find(a => a.id === 'percival');
+    if (percival) agentsToDisplay.push(percival);
+    else agentsToDisplay.push({ id: 'percival', name: 'Percival', status: 'idle', currentTask: null, model: 'opus' });
+
+    // Forge
+    if (forgeAgent) {
+      agentsToDisplay.push({ ...forgeAgent, id: 'forge-alpha' });
+    } else {
+      agentsToDisplay.push({ id: 'forge-alpha', name: 'Forge', status: 'idle', currentTask: null, model: 'sonnet' });
+    }
+
+    // Sprite
+    const spriteAgent = data.agents.find(a => a.id === 'sprite');
+    if (spriteAgent) agentsToDisplay.push(spriteAgent);
+    else agentsToDisplay.push({ id: 'sprite', name: 'Sprite', status: 'idle', currentTask: null, model: 'gemini' });
+
+    agentsToDisplay.forEach(agentData => {
+      if (this.agents.has(agentData.id)) {
+        // Solo actualizar datos, NO recrear
+        this.agents.get(agentData.id)!.update(agentData);
+      } else {
+        // Crear UNA SOLA VEZ
+        const agent = new Agent(this, agentData);
+        this.agents.set(agentData.id, agent);
+      }
     });
-    this.time.delayedCall(3600, () => { timer.destroy(); g.destroy(); });
+
+    // Actualizar paneles informativos
+    this.taskBoard.create(data.tasks);
+    this.prMonitor.create(data.pullRequests);
+    this.heartbeat.create(data.heartbeat);
+    this.treasureChest.create(data.pullRequests);
+  }
+
+  private applyFallbackSnapshot(): void {
+    const fallback: SnapshotData = {
+      timestamp: new Date().toISOString(),
+      heartbeat: { lastCheck: new Date().toISOString(), status: 'warn' },
+      agents: [
+        { id: 'percival',   name: 'Percival',   status: 'idle', currentTask: null, model: 'opus' },
+        { id: 'forge-alpha', name: 'Forge Alpha', status: 'idle', currentTask: null, model: 'sonnet' },
+        { id: 'sprite',     name: 'Sprite',     status: 'idle', currentTask: null, model: 'gemini' },
+      ],
+      tasks: [],
+      pullRequests: [],
+      stats: { prsToday: 0, tasksCompleted: 0, agentsActive: 0 },
+    };
+    this.applySnapshot(fallback);
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // UPDATE (loop de Phaser — mínimo trabajo aquí)
+  // ─────────────────────────────────────────────────────────────
+  update(): void {
+    // Sin lógica en el loop — todo está manejado por tweens y timers
   }
 }
