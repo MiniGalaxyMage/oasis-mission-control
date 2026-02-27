@@ -1,45 +1,27 @@
 import Phaser from 'phaser';
 import { SnapshotData, AgentData } from '../types';
-import { CastleRoom } from '../entities/CastleRoom';
 import { Agent } from '../entities/Agent';
-import { ForgeArea } from '../entities/ForgeArea';
-import { TaskBoard } from '../entities/TaskBoard';
-import { PRMonitor } from '../entities/PRMonitor';
-import { HeartbeatPulse } from '../entities/HeartbeatPulse';
-import { TreasureChest } from '../entities/TreasureChest';
 
 /**
  * CommandCenter — Escena principal OASIS Mission Control.
- * Estilo Zelda: A Link to the Past — habitación de castillo.
- *
- * Reglas de oro:
- * - Cada agente se crea UNA SOLA VEZ
- * - Los sprites se mueven con tweens LENTOS
- * - Sin overlays HTML, todo en Phaser
+ * Fondo: castle-room-bg.png (Gemini pixel art isométrico).
+ * Personajes: spritesheets con animación idle 4 frames.
  */
 export class CommandCenter extends Phaser.Scene {
-  // Datos
   private snapshot: SnapshotData | null = null;
   private refreshTimer: Phaser.Time.TimerEvent | null = null;
-
-  // Entidades de la escena
-  private castleRoom!: CastleRoom;
-  private forgeArea!: ForgeArea;
-  private taskBoard!: TaskBoard;
-  private prMonitor!: PRMonitor;
-  private heartbeat!: HeartbeatPulse;
-  private treasureChest!: TreasureChest;
 
   // Agentes — mapa por ID, se crean UNA VEZ
   private agents: Map<string, Agent> = new Map();
 
-  // Antorchas
-  private torch1Gfx!: Phaser.GameObjects.Graphics;
-  private torch2Gfx!: Phaser.GameObjects.Graphics;
-
-  // UI estática
+  // Info panels
+  private taskBg!: Phaser.GameObjects.Graphics;
+  private taskText!: Phaser.GameObjects.Text;
+  private prBg!: Phaser.GameObjects.Graphics;
+  private prText!: Phaser.GameObjects.Text;
+  private heartbeatBg!: Phaser.GameObjects.Graphics;
+  private heartbeatText!: Phaser.GameObjects.Text;
   private titleText!: Phaser.GameObjects.Text;
-  private statsText!: Phaser.GameObjects.Text;
   private timestampText!: Phaser.GameObjects.Text;
 
   constructor() {
@@ -50,56 +32,72 @@ export class CommandCenter extends Phaser.Scene {
   // PRELOAD
   // ─────────────────────────────────────────────────────────────
   preload(): void {
-    // Sprites de agentes — 1024x1024, los cargamos como imagen simple
-    // (mejor estático y limpio que animado con glitches)
-    this.load.image('percival-idle',  'src/assets/sprites/percival-idle.png');
-    this.load.image('forge-idle',     'src/assets/sprites/forge-idle.png');
-    this.load.image('forge-working',  'src/assets/sprites/forge-working.png');
-    this.load.image('sprite-idle',    'src/assets/sprites/sprite-idle.png');
+    // Fondo de sala de castillo Zelda
+    this.load.image('castle-room-bg', '/assets/room/castle-room-bg.png');
 
-    // Objetos
-    this.load.image('anvil',          'src/assets/objects/anvil.png');
-    this.load.image('easel',          'src/assets/objects/easel.png');
-    this.load.image('strategy-table', 'src/assets/objects/strategy-table.png');
-    this.load.image('treasure-chest', 'src/assets/objects/treasure-chest.png');
+    // Spritesheets de personajes — todos 1024x1024, 4 frames en fila
+    this.load.spritesheet('percival-sheet', '/assets/sprites/percival-sheet.png', {
+      frameWidth: 256,
+      frameHeight: 256,
+    });
+    this.load.spritesheet('forge-sheet', '/assets/sprites/forge-sheet.png', {
+      frameWidth: 256,
+      frameHeight: 256,
+    });
+    this.load.spritesheet('sprite-sheet', '/assets/sprites/sprite-sheet.png', {
+      frameWidth: 256,
+      frameHeight: 256,
+    });
 
-    // Pantalla de carga minimalista
-    const loadText = this.add.text(400, 300, 'Cargando OASIS...', {
+    // Pantalla de carga
+    const loadText = this.add.text(400, 300, '⚔️  Cargando OASIS...', {
       fontSize: '12px',
       fontFamily: '"Press Start 2P", monospace',
-      color: '#4444aa',
+      color: '#ffdd44',
     }).setOrigin(0.5);
 
-    this.load.on('complete', () => loadText.destroy());
+    const progressBg = this.add.graphics();
+    progressBg.fillStyle(0x1a1a2e);
+    progressBg.fillRect(250, 330, 300, 10);
+
+    const progressBar = this.add.graphics();
+
+    this.load.on('progress', (value: number) => {
+      progressBar.clear();
+      progressBar.fillStyle(0x4444cc);
+      progressBar.fillRect(250, 330, 300 * value, 10);
+    });
+
+    this.load.on('complete', () => {
+      loadText.destroy();
+      progressBg.destroy();
+      progressBar.destroy();
+    });
   }
 
   // ─────────────────────────────────────────────────────────────
   // CREATE
   // ─────────────────────────────────────────────────────────────
-  async create(): Promise<void> {
-    // 1. Habitación base
-    this.castleRoom = new CastleRoom(this);
-    this.castleRoom.create();
+  create(): void {
+    // 1. Fondo: imagen de Gemini escalada a 800x600
+    const bg = this.add.image(400, 300, 'castle-room-bg');
+    bg.setDisplaySize(800, 600);
+    bg.setDepth(0);
 
-    // 2. Antorchas (pared superior)
-    this.createTorches();
+    // 2. Animaciones de personajes (definir una sola vez)
+    this.createAnimations();
 
-    // 3. Objetos del escenario
-    this.createSceneObjects();
-
-    // 4. UI estática (título, stats)
+    // 3. UI: título y timestamp
     this.createUI();
 
-    // 5. Entidades informativas (con datos vacíos hasta que llegue el snapshot)
-    this.taskBoard  = new TaskBoard(this);
-    this.prMonitor  = new PRMonitor(this);
-    this.heartbeat  = new HeartbeatPulse(this);
-    this.treasureChest = new TreasureChest(this);
+    // 4. Paneles de info
+    this.createInfoPanels();
 
-    // 6. Cargar snapshot y arrancar agentes
-    await this.loadSnapshot();
+    // 5. Cargar datos (crea agentes la primera vez)
+    this.applyFallbackSnapshot();
+    this.loadSnapshot();
 
-    // 7. Auto-refresh cada 30 segundos
+    // 6. Auto-refresh 30s
     this.refreshTimer = this.time.addEvent({
       delay: 30000,
       loop: true,
@@ -108,140 +106,127 @@ export class CommandCenter extends Phaser.Scene {
   }
 
   // ─────────────────────────────────────────────────────────────
-  // ANTORCHAS
+  // ANIMACIONES
   // ─────────────────────────────────────────────────────────────
-  private createTorches(): void {
-    this.torch1Gfx = this.createTorch(100, 75);
-    this.torch2Gfx = this.createTorch(700, 75);
-  }
+  private createAnimations(): void {
+    // Idle animaciones — 4 frames, 2 FPS, loop
+    const defs = [
+      { key: 'percival-idle', sheet: 'percival-sheet' },
+      { key: 'forge-idle', sheet: 'forge-sheet' },
+      { key: 'sprite-idle', sheet: 'sprite-sheet' },
+    ];
 
-  private createTorch(x: number, y: number): Phaser.GameObjects.Graphics {
-    const gfx = this.add.graphics();
-    gfx.setDepth(12);
-
-    // Palo de la antorcha
-    gfx.fillStyle(0x6b4c11);
-    gfx.fillRect(x - 3, y - 10, 6, 20);
-
-    // Llama (naranja/amarillo)
-    gfx.fillStyle(0xff6600, 0.9);
-    gfx.fillTriangle(x - 8, y - 10, x, y - 26, x + 8, y - 10);
-    gfx.fillStyle(0xffaa00, 0.95);
-    gfx.fillTriangle(x - 5, y - 10, x, y - 22, x + 5, y - 10);
-    gfx.fillStyle(0xffee44);
-    gfx.fillTriangle(x - 2, y - 10, x, y - 16, x + 2, y - 10);
-
-    // Parpadeo de la llama
-    this.tweens.add({
-      targets: gfx,
-      alpha: { from: 0.7, to: 1.0 },
-      duration: Phaser.Math.Between(200, 500),
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
-    });
-
-    // Halo de luz
-    const halo = this.add.graphics();
-    halo.setDepth(3);
-    halo.fillStyle(0xff8800, 0.08);
-    halo.fillCircle(x, y - 15, 40);
-    this.tweens.add({
-      targets: halo,
-      alpha: { from: 0.5, to: 1.0 },
-      duration: Phaser.Math.Between(300, 600),
-      yoyo: true,
-      repeat: -1,
-    });
-
-    return gfx;
-  }
-
-  // ─────────────────────────────────────────────────────────────
-  // OBJETOS DEL ESCENARIO
-  // ─────────────────────────────────────────────────────────────
-  private createSceneObjects(): void {
-    // --- HERRERÍA (esquina inf-izq) ---
-    this.forgeArea = new ForgeArea(this);
-    this.forgeArea.create();
-
-    // --- MESA DE ESTRATEGIA (centro-derecha) ---
-    if (this.textures.exists('strategy-table')) {
-      const table = this.add.image(320, 290, 'strategy-table');
-      table.setScale(0.1);
-      table.setDepth(5);
-    } else {
-      const gfx = this.add.graphics();
-      gfx.fillStyle(0x5c3a1e);
-      gfx.fillRect(260, 270, 120, 60);
-      gfx.lineStyle(2, 0x8a6230);
-      gfx.strokeRect(260, 270, 120, 60);
-      gfx.setDepth(5);
-      this.add.text(320, 300, 'MESA', {
-        fontSize: '7px',
-        fontFamily: '"Press Start 2P", monospace',
-        color: '#aa8844',
-      }).setOrigin(0.5).setDepth(6);
+    for (const { key, sheet } of defs) {
+      if (!this.anims.exists(key)) {
+        this.anims.create({
+          key,
+          frames: this.anims.generateFrameNumbers(sheet, { start: 0, end: 3 }),
+          frameRate: 2,
+          repeat: -1,
+        });
+      }
     }
-
-    // --- CABALLETE (derecha, para Sprite) ---
-    if (this.textures.exists('easel')) {
-      const easel = this.add.image(670, 270, 'easel');
-      easel.setScale(0.08);
-      easel.setDepth(5);
-    } else {
-      const gfx = this.add.graphics();
-      gfx.lineStyle(3, 0x8a6230);
-      gfx.lineBetween(655, 220, 670, 310); // pata izq
-      gfx.lineBetween(685, 220, 670, 310); // pata der
-      gfx.lineBetween(650, 280, 690, 280); // soporte
-      gfx.fillStyle(0xd4b483);
-      gfx.fillRect(648, 218, 44, 55);
-      gfx.lineStyle(1, 0x6b4020);
-      gfx.strokeRect(648, 218, 44, 55);
-      gfx.setDepth(5);
-      this.add.text(670, 325, 'CABALLETE', {
-        fontSize: '6px',
-        fontFamily: '"Press Start 2P", monospace',
-        color: '#aa8844',
-      }).setOrigin(0.5).setDepth(6);
-    }
-
-    // --- PERGAMINOS decorativos en pared derecha (detrás del PRMonitor) ---
-    const scrollDeco = this.add.graphics();
-    scrollDeco.fillStyle(0xd4b483, 0.3);
-    scrollDeco.fillRect(585, 100, 170, 220);
-    scrollDeco.lineStyle(1, 0x6b4020, 0.5);
-    scrollDeco.strokeRect(585, 100, 170, 220);
-    scrollDeco.setDepth(4);
   }
 
   // ─────────────────────────────────────────────────────────────
   // UI ESTÁTICA
   // ─────────────────────────────────────────────────────────────
   private createUI(): void {
-    // Título centrado en la parte superior
-    this.titleText = this.add.text(400, 18, '🎮 OASIS MISSION CONTROL', {
+    // Banda oscura superior para el título
+    const titleBg = this.add.graphics();
+    titleBg.fillStyle(0x0a0a1a, 0.75);
+    titleBg.fillRect(0, 0, 800, 38);
+    titleBg.setDepth(18);
+
+    this.titleText = this.add.text(400, 10, '⚔️  OASIS MISSION CONTROL', {
       fontSize: '11px',
       fontFamily: '"Press Start 2P", monospace',
       color: '#ffdd44',
       stroke: '#000000',
       strokeThickness: 3,
-    }).setOrigin(0.5, 0).setDepth(20);
+    }).setOrigin(0.5, 0).setDepth(19);
 
-    // Stats bajo el título
-    this.statsText = this.add.text(400, 38, 'Agentes: — | PRs: — | Tareas: —', {
-      fontSize: '7px',
-      fontFamily: '"Press Start 2P", monospace',
-      color: '#8888bb',
-    }).setOrigin(0.5, 0).setDepth(20);
-
-    // Timestamp (esquina inferior derecha)
-    this.timestampText = this.add.text(790, 590, '', {
+    this.timestampText = this.add.text(790, 594, '', {
       fontSize: '6px',
       fontFamily: '"Press Start 2P", monospace',
-      color: '#555577',
-    }).setOrigin(1, 1).setDepth(20);
+      color: '#aaaacc',
+    }).setOrigin(1, 1).setDepth(19);
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // PANELES DE INFO
+  // ─────────────────────────────────────────────────────────────
+  private createInfoPanels(): void {
+    // Panel Tareas — esquina inf-izquierda
+    this.taskBg = this.add.graphics().setDepth(15);
+    this.taskText = this.add.text(10, 500, '', {
+      fontSize: '7px',
+      fontFamily: '"Press Start 2P", monospace',
+      color: '#ccffcc',
+      wordWrap: { width: 180 },
+    }).setDepth(16);
+
+    // Panel PRs — esquina inf-derecha
+    this.prBg = this.add.graphics().setDepth(15);
+    this.prText = this.add.text(610, 460, '', {
+      fontSize: '7px',
+      fontFamily: '"Press Start 2P", monospace',
+      color: '#ccccff',
+      wordWrap: { width: 180 },
+    }).setDepth(16);
+
+    // Panel Heartbeat — banda inferior central
+    this.heartbeatBg = this.add.graphics().setDepth(15);
+    this.heartbeatText = this.add.text(400, 572, '', {
+      fontSize: '7px',
+      fontFamily: '"Press Start 2P", monospace',
+      color: '#ffeeaa',
+    }).setOrigin(0.5, 1).setDepth(16);
+  }
+
+  private updateInfoPanels(data: SnapshotData): void {
+    // — Tareas —
+    const recentTasks = data.tasks.slice(0, 5);
+    const taskLines = ['📋 TAREAS', '─────────────', ...recentTasks.map(t =>
+      `${t.status === 'done' ? '✓' : '○'} ${truncate(t.title ?? t.id, 22)}`
+    )];
+    if (recentTasks.length === 0) taskLines.push('Sin tareas activas');
+    const taskStr = taskLines.join('\n');
+    this.taskText.setText(taskStr);
+    const tb = this.taskText.getBounds();
+    this.taskBg.clear();
+    this.taskBg.fillStyle(0x0a0a1e, 0.82);
+    this.taskBg.fillRoundedRect(tb.x - 6, tb.y - 5, tb.width + 12, tb.height + 10, 4);
+    this.taskBg.lineStyle(1, 0x3333aa);
+    this.taskBg.strokeRoundedRect(tb.x - 6, tb.y - 5, tb.width + 12, tb.height + 10, 4);
+
+    // — PRs —
+    const recentPRs = data.pullRequests.slice(0, 4);
+    const prLines = ['🔀 PULL REQUESTS', '─────────────', ...recentPRs.map(pr =>
+      `#${pr.number ?? '?'} ${truncate(pr.title ?? '', 20)}`
+    )];
+    if (recentPRs.length === 0) prLines.push('Sin PRs abiertos');
+    this.prText.setText(prLines.join('\n'));
+    const pb = this.prText.getBounds();
+    this.prBg.clear();
+    this.prBg.fillStyle(0x0a0a1e, 0.82);
+    this.prBg.fillRoundedRect(pb.x - 6, pb.y - 5, pb.width + 12, pb.height + 10, 4);
+    this.prBg.lineStyle(1, 0x3333aa);
+    this.prBg.strokeRoundedRect(pb.x - 6, pb.y - 5, pb.width + 12, pb.height + 10, 4);
+
+    // — Heartbeat —
+    const hb = data.heartbeat;
+    const hbColor = hb.status === 'ok' ? '#44ff88' : hb.status === 'warn' ? '#ffdd44' : '#ff4444';
+    const hbIcon = hb.status === 'ok' ? '💚' : hb.status === 'warn' ? '💛' : '❤️';
+    const hbStr = `${hbIcon} HEARTBEAT: ${hb.status.toUpperCase()}  ·  ${new Date(hb.lastCheck).toLocaleTimeString('es-ES')}`;
+    this.heartbeatText.setText(hbStr);
+    this.heartbeatText.setColor(hbColor);
+    const hbb = this.heartbeatText.getBounds();
+    this.heartbeatBg.clear();
+    this.heartbeatBg.fillStyle(0x0a0a1e, 0.82);
+    this.heartbeatBg.fillRoundedRect(hbb.x - 8, hbb.y - 4, hbb.width + 16, hbb.height + 8, 4);
+    this.heartbeatBg.lineStyle(1, 0x224422);
+    this.heartbeatBg.strokeRoundedRect(hbb.x - 8, hbb.y - 4, hbb.width + 16, hbb.height + 8, 4);
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -255,69 +240,38 @@ export class CommandCenter extends Phaser.Scene {
       this.applySnapshot(data);
     } catch (err) {
       console.warn('[CommandCenter] No se pudo cargar snapshot:', err);
-      if (!this.snapshot) {
-        this.applyFallbackSnapshot();
-      }
+      if (!this.snapshot) this.applyFallbackSnapshot();
     }
   }
 
   private applySnapshot(data: SnapshotData): void {
     this.snapshot = data;
-
-    // Actualizar UI de stats
-    this.statsText.setText(
-      `Agentes: ${data.stats.agentsActive} | PRs hoy: ${data.stats.prsToday} | Tareas: ${data.stats.tasksCompleted}`
-    );
     this.timestampText.setText(new Date(data.timestamp).toLocaleTimeString('es-ES'));
 
-    // Agentes: crear solo los que no existen, actualizar los que sí
-    const knownIds = new Set(this.agents.keys());
-    const AGENT_KEYS = ['percival', 'forge-alpha', 'sprite'] as const;
-
-    // Filtrar los agentes que queremos mostrar (los que tienen sprites)
-    const displayAgents = data.agents.filter(a =>
-      AGENT_KEYS.includes(a.id as typeof AGENT_KEYS[number])
-    );
-
-    // Si hay un forge-beta pero no forge-alpha, usar forge-beta como forge-alpha
+    // Resolver agentes a mostrar
     const forgeAgent = data.agents.find(a => a.id === 'forge-alpha')
       ?? data.agents.find(a => a.id.startsWith('forge'));
 
-    const agentsToDisplay: AgentData[] = [];
-
-    // Percival
-    const percival = data.agents.find(a => a.id === 'percival');
-    if (percival) agentsToDisplay.push(percival);
-    else agentsToDisplay.push({ id: 'percival', name: 'Percival', status: 'idle', currentTask: null, model: 'opus' });
-
-    // Forge
-    if (forgeAgent) {
-      agentsToDisplay.push({ ...forgeAgent, id: 'forge-alpha' });
-    } else {
-      agentsToDisplay.push({ id: 'forge-alpha', name: 'Forge', status: 'idle', currentTask: null, model: 'sonnet' });
-    }
-
-    // Sprite
-    const spriteAgent = data.agents.find(a => a.id === 'sprite');
-    if (spriteAgent) agentsToDisplay.push(spriteAgent);
-    else agentsToDisplay.push({ id: 'sprite', name: 'Sprite', status: 'idle', currentTask: null, model: 'gemini' });
+    const agentsToDisplay: AgentData[] = [
+      data.agents.find(a => a.id === 'percival')
+        ?? { id: 'percival', name: 'Percival', status: 'idle', currentTask: null, model: 'opus' },
+      forgeAgent
+        ? { ...forgeAgent, id: 'forge-alpha' }
+        : { id: 'forge-alpha', name: 'Forge Alpha', status: 'idle', currentTask: null, model: 'sonnet' },
+      data.agents.find(a => a.id === 'sprite')
+        ?? { id: 'sprite', name: 'Sprite', status: 'idle', currentTask: null, model: 'gemini' },
+    ];
 
     agentsToDisplay.forEach(agentData => {
       if (this.agents.has(agentData.id)) {
-        // Solo actualizar datos, NO recrear
         this.agents.get(agentData.id)!.update(agentData);
       } else {
-        // Crear UNA SOLA VEZ
         const agent = new Agent(this, agentData);
         this.agents.set(agentData.id, agent);
       }
     });
 
-    // Actualizar paneles informativos
-    this.taskBoard.create(data.tasks);
-    this.prMonitor.create(data.pullRequests);
-    this.heartbeat.create(data.heartbeat);
-    this.treasureChest.create(data.pullRequests);
+    this.updateInfoPanels(data);
   }
 
   private applyFallbackSnapshot(): void {
@@ -325,9 +279,9 @@ export class CommandCenter extends Phaser.Scene {
       timestamp: new Date().toISOString(),
       heartbeat: { lastCheck: new Date().toISOString(), status: 'warn' },
       agents: [
-        { id: 'percival',   name: 'Percival',   status: 'idle', currentTask: null, model: 'opus' },
-        { id: 'forge-alpha', name: 'Forge Alpha', status: 'idle', currentTask: null, model: 'sonnet' },
-        { id: 'sprite',     name: 'Sprite',     status: 'idle', currentTask: null, model: 'gemini' },
+        { id: 'percival',    name: 'Percival',    status: 'idle', currentTask: null, model: 'opus' },
+        { id: 'forge-alpha', name: 'Forge Alpha',  status: 'idle', currentTask: null, model: 'sonnet' },
+        { id: 'sprite',      name: 'Sprite',       status: 'idle', currentTask: null, model: 'gemini' },
       ],
       tasks: [],
       pullRequests: [],
@@ -336,10 +290,13 @@ export class CommandCenter extends Phaser.Scene {
     this.applySnapshot(fallback);
   }
 
-  // ─────────────────────────────────────────────────────────────
-  // UPDATE (loop de Phaser — mínimo trabajo aquí)
-  // ─────────────────────────────────────────────────────────────
   update(): void {
-    // Sin lógica en el loop — todo está manejado por tweens y timers
+    // Sin lógica en el loop — todo via tweens y timers
   }
+}
+
+function truncate(str: string, maxLen: number): string {
+  if (!str) return '';
+  if (str.length <= maxLen) return str;
+  return str.substring(0, maxLen - 1) + '…';
 }
