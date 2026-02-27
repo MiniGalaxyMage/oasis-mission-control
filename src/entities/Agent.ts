@@ -10,229 +10,463 @@ const STATUS_COLORS: Record<string, number> = {
   done: 0x00ffcc,
 };
 
+interface Waypoint {
+  x: number;
+  y: number;
+}
+
+interface Particle {
+  x: number; y: number;
+  vx: number; vy: number;
+  life: number; color: number;
+}
+
+/**
+ * Agent — personaje jugable grande (48x72px), con movimiento por la habitación.
+ * Percival = mago púrpura. Forge* = herrero naranja.
+ */
 export class Agent extends Phaser.GameObjects.Container {
-  private agentData: AgentData;
-  private spriteGraphics!: Phaser.GameObjects.Graphics;
-  private statusDot!: Phaser.GameObjects.Graphics;
+  public agentData: AgentData;
+  private spriteGfx!: Phaser.GameObjects.Graphics;
+  private labelGfx!: Phaser.GameObjects.Graphics;
+  private particleGfx!: Phaser.GameObjects.Graphics;
   private nameText!: Phaser.GameObjects.Text;
   private statusText!: Phaser.GameObjects.Text;
+  private speechBubble: Phaser.GameObjects.Container | null = null;
+  private tooltip: Phaser.GameObjects.Container | null = null;
   private animTimer = 0;
   private animFrame = 0;
-  private tooltip: Phaser.GameObjects.Container | null = null;
-  private isPercival: boolean;
+  private moveDir = 1; // 1 = right, -1 = left
+  private isMoving = false;
+  private walkCycle = 0;
+  private particles: Particle[] = [];
+  readonly isPercival: boolean;
+
+  // Task position this agent should move to
+  private taskTarget: Waypoint | null = null;
+  private idleWaypoints: Waypoint[] = [];
+  private currentWaypointIndex = 0;
+  private idleTimer = 0;
+  private idlePause = 0;
 
   constructor(scene: Phaser.Scene, x: number, y: number, data: AgentData) {
     super(scene, x, y);
     this.agentData = data;
     this.isPercival = data.id === 'percival';
-    this.buildSprite();
-    this.buildUI();
-    this.setInteractive(new Phaser.Geom.Rectangle(-44, -44, 88, 110), Phaser.Geom.Rectangle.Contains);
-    this.on('pointerover', this.showTooltip, this);
-    this.on('pointerout', this.hideTooltip, this);
-    // added to scene via scene.add.existing elsewhere or from CommandCenter
+
+    this.spriteGfx = scene.add.graphics();
+    this.labelGfx = scene.add.graphics();
+    this.particleGfx = scene.add.graphics();
+    this.add([this.particleGfx, this.spriteGfx, this.labelGfx]);
+
+    this.buildLabel();
+    this.drawSprite();
+
+    this.setInteractive(
+      new Phaser.Geom.Rectangle(-28, -60, 56, 80),
+      Phaser.Geom.Rectangle.Contains,
+    );
+    this.on('pointerover', () => {
+      scene.input.setDefaultCursor('pointer');
+      this.showTooltip();
+    });
+    this.on('pointerout', () => {
+      scene.input.setDefaultCursor('default');
+      this.hideTooltip();
+    });
+    this.on('pointerdown', () => this.showSpeechBubble());
   }
 
-  private buildSprite(): void {
-    this.spriteGraphics = this.scene.add.graphics();
-    this.add(this.spriteGraphics);
-    this.drawSprite(0);
+  setIdleWaypoints(waypoints: Waypoint[]): void {
+    this.idleWaypoints = waypoints;
   }
 
-  private drawSprite(frame: number): void {
-    const g = this.spriteGraphics;
+  setTaskTarget(wp: Waypoint | null): void {
+    this.taskTarget = wp;
+  }
+
+  private buildLabel(): void {
+    const color = STATUS_COLORS[this.agentData.status] ?? 0xffffff;
+    this.nameText = this.scene.add.text(0, 44, this.agentData.name, {
+      fontFamily: '"Press Start 2P"',
+      fontSize: '6px',
+      color: '#ffffff',
+      stroke: '#000000',
+      strokeThickness: 3,
+      align: 'center',
+    }).setOrigin(0.5, 0);
+
+    this.statusText = this.scene.add.text(0, 56, this.agentData.status.toUpperCase(), {
+      fontFamily: '"Press Start 2P"',
+      fontSize: '5px',
+      color: Phaser.Display.Color.IntegerToColor(color).rgba,
+      stroke: '#000000',
+      strokeThickness: 2,
+      align: 'center',
+    }).setOrigin(0.5, 0);
+
+    this.add([this.nameText, this.statusText]);
+  }
+
+  private drawSprite(): void {
+    const g = this.spriteGfx;
     g.clear();
-    const S = 4; // pixel scale
+    const frame = this.animFrame;
+    const S = 4; // 1 pixel = 4x4 actual px
 
     if (this.isPercival) {
       this.drawPercival(g, S, frame);
     } else {
-      this.drawForge(g, S, frame);
+      this.drawForgeAgent(g, S, frame);
     }
   }
 
-  // Percival: mago/hacker con gafas, predominante púrpura
+  /**
+   * Percival — mago con túnica púrpura, sombrero, gafas y varita.
+   * Grid 12px wide * 18px tall (en unidades S), origin centro-bajo.
+   * Actual pixels: 48 x 72+
+   */
   private drawPercival(g: Phaser.GameObjects.Graphics, S: number, frame: number): void {
-    const bobY = frame % 2 === 0 ? 0 : 1;
+    const dir = this.moveDir; // 1 = right, -1 = left
+    const walk = this.isMoving ? Math.sin(this.walkCycle * 0.15) : 0;
+    const legSwing = Math.sin(this.walkCycle * 0.15) * 2;
+    const armSwing = -Math.sin(this.walkCycle * 0.15) * 2;
 
-    // Robe body — púrpura oscuro
-    g.fillStyle(0x6622aa);
-    g.fillRect(-5 * S, 2 * S + bobY, 10 * S, 8 * S);
-
-    // Robe hem
-    g.fillStyle(0x8833cc);
-    g.fillRect(-6 * S, 9 * S + bobY, 12 * S, 2 * S);
-
-    // Head — skin tone
-    g.fillStyle(0xffcc99);
-    g.fillRect(-4 * S, -7 * S + bobY, 8 * S, 6 * S);
-
-    // Wizard hat — dark purple
-    g.fillStyle(0x3d1168);
-    g.fillRect(-3 * S, -14 * S + bobY, 6 * S, 8 * S);
-    g.fillRect(-5 * S, -7 * S + bobY, 10 * S, 2 * S);
-
-    // Hat star ✦
-    g.fillStyle(0xffdd00);
-    g.fillRect(-1 * S, -13 * S + bobY, 2 * S, 2 * S);
-
-    // Glasses
-    g.fillStyle(0x00ccff);
-    g.fillRect(-4 * S, -5 * S + bobY, 3 * S, 2 * S);
-    g.fillRect(1 * S, -5 * S + bobY, 3 * S, 2 * S);
-    g.fillStyle(0x888888);
-    g.fillRect(-1 * S, -4 * S + bobY, 2 * S, 1 * S); // bridge
-
-    // Arms
-    g.fillStyle(0x6622aa);
-    g.fillRect(-8 * S, 2 * S + bobY, 3 * S, 6 * S);
-    g.fillRect(5 * S, 2 * S + bobY, 3 * S, 6 * S);
-
-    // Wand (right hand) — yellow tip
-    g.fillStyle(0x885500);
-    g.fillRect(7 * S, 2 * S + bobY, 2 * S, 8 * S);
-    g.fillStyle(0xffdd00);
-    g.fillRect(7 * S, 1 * S + bobY, 2 * S, 2 * S);
+    // Shadow
+    g.fillStyle(0x000000, 0.25);
+    g.fillEllipse(0, 42, 44, 10);
 
     // Boots
-    g.fillStyle(0x332255);
-    g.fillRect(-5 * S, 10 * S + bobY, 4 * S, 3 * S);
-    g.fillRect(1 * S, 10 * S + bobY, 4 * S, 3 * S);
+    g.fillStyle(0x2a1a44);
+    g.fillRect((-3 + legSwing) * S, 9 * S, 3 * S, 3 * S);
+    g.fillRect((0 - legSwing) * S, 9 * S, 3 * S, 3 * S);
 
-    // Thinking frame: question marks
-    if (this.agentData.status === 'thinking' && frame % 4 < 2) {
-      g.fillStyle(0xffdd00);
-      g.fillRect(-8 * S, -12 * S, 2 * S, 2 * S);
-      g.fillRect(6 * S, -10 * S, 2 * S, 2 * S);
-    }
+    // Robe body — púrpura
+    g.fillStyle(0x7733bb);
+    g.fillRect(-5 * S, 0, 10 * S, 9 * S);
+    // Robe inner shadow
+    g.fillStyle(0x5522aa);
+    g.fillRect(-3 * S, 1 * S, 6 * S, 8 * S);
+    // Robe hem
+    g.fillStyle(0x8844cc);
+    g.fillRect(-6 * S, 8 * S, 12 * S, 2 * S);
 
-    // Orchestrating: magic sparkles
-    if (this.agentData.status === 'orchestrating' && frame % 4 === 0) {
-      g.fillStyle(0xff88ff);
-      g.fillRect(-10 * S, -8 * S, 2 * S, 2 * S);
-      g.fillRect(8 * S, -6 * S, 2 * S, 2 * S);
-    }
-  }
+    // Belt
+    g.fillStyle(0xaa8822);
+    g.fillRect(-5 * S, 4 * S, 10 * S, S);
 
-  // Forge: herrero/constructor, predominante naranja
-  private drawForge(g: Phaser.GameObjects.Graphics, S: number, frame: number): void {
-    const workBob = this.agentData.status === 'working' ? (frame % 4 < 2 ? 0 : 2) : 0;
+    // Arms
+    const armY = S;
+    g.fillStyle(0x7733bb);
+    g.fillRect((-8 + armSwing) * S, armY, 3 * S, 6 * S);
+    g.fillRect((5 - armSwing) * S, armY, 3 * S, 6 * S);
 
-    // Body — naranja
-    g.fillStyle(0xee6600);
-    g.fillRect(-5 * S, 1 * S + workBob, 10 * S, 8 * S);
+    // Wand hand (right when dir=1)
+    const wandX = dir > 0 ? 7 * S : -9 * S;
+    g.fillStyle(0x885522);
+    g.fillRect(wandX, 0, 2 * S, 7 * S);
+    // Wand tip glow
+    const tipAlpha = 0.7 + 0.3 * Math.sin(frame * 0.3);
+    g.fillStyle(0xffdd44, tipAlpha);
+    g.fillCircle(wandX + S, -S, 4);
+    g.fillStyle(0xffffff, tipAlpha * 0.5);
+    g.fillCircle(wandX + S, -S, 2);
 
-    // Chest armor plate
-    g.fillStyle(0xcc4400);
-    g.fillRect(-4 * S, 2 * S + workBob, 8 * S, 5 * S);
+    // Neck
+    g.fillStyle(0xffcc99);
+    g.fillRect(-2 * S, -7 * S, 4 * S, 2 * S);
 
     // Head
     g.fillStyle(0xffcc99);
-    g.fillRect(-4 * S, -6 * S + workBob, 8 * S, 6 * S);
+    g.fillRect(-4 * S, -13 * S, 8 * S, 7 * S);
+    // Head outline
+    g.lineStyle(1, 0xcc9966, 0.5);
+    g.strokeRect(-4 * S, -13 * S, 8 * S, 7 * S);
 
-    // Hard hat
-    g.fillStyle(0xffaa00);
-    g.fillRect(-5 * S, -9 * S + workBob, 10 * S, 4 * S);
-    g.fillRect(-4 * S, -13 * S + workBob, 8 * S, 5 * S);
+    // Eyes
+    g.fillStyle(0x333333);
+    g.fillRect(-3 * S, -11 * S, S, S);
+    g.fillRect(2 * S, -11 * S, S, S);
 
+    // Glasses — cyan
+    g.lineStyle(2, 0x00bbee, 1);
+    g.strokeRect((-4 + 0.5) * S, -12 * S, 3 * S, 2 * S);
+    g.strokeRect((0.5) * S, -12 * S, 3 * S, 2 * S);
+    g.lineStyle(1, 0x00bbee, 1);
+    g.lineBetween(-0.5 * S, -11 * S, 0.5 * S, -11 * S); // bridge
+
+    // Smile
+    g.lineStyle(1, 0xcc8844, 1);
+    g.lineBetween(-2 * S, -7 * S - 2, -S, -7 * S);
+    g.lineBetween(-S, -7 * S, S, -7 * S);
+    g.lineBetween(S, -7 * S, 2 * S, -7 * S - 2);
+
+    // Wizard hat — dark purple
+    g.fillStyle(0x331166);
     // Hat brim
-    g.fillStyle(0xff8800);
-    g.fillRect(-6 * S, -8 * S + workBob, 12 * S, 2 * S);
+    g.fillRect(-6 * S, -14 * S, 12 * S, 2 * S);
+    // Hat cone
+    g.fillStyle(0x442288);
+    g.fillRect(-3 * S, -22 * S, 6 * S, 9 * S);
+    // Hat tip
+    g.fillTriangle(-2 * S, -22 * S, 2 * S, -22 * S, 0, -26 * S);
+    // Hat star
+    g.fillStyle(0xffee00);
+    g.fillRect(-S, -20 * S, 2 * S, 2 * S);
+    g.fillRect(-2 * S, -19 * S, 4 * S, S);
+    // Hat band
+    g.fillStyle(0x5533aa);
+    g.fillRect(-3 * S, -15 * S, 6 * S, S);
+
+    // Status effects
+    if (this.agentData.status === 'thinking') {
+      // Question marks float
+      g.fillStyle(0xffdd00, 0.9);
+      g.fillRect(-10 * S, -24 * S + Math.floor(frame * 0.05 % 4), S, S);
+      g.fillRect(9 * S, -22 * S + Math.floor(frame * 0.04 % 4), S, S);
+    }
+    if (this.agentData.status === 'orchestrating') {
+      // Magic sparkles
+      const sp = frame * 0.08;
+      g.fillStyle(0xff88ff, 0.9);
+      g.fillRect(-10 * S, -10 * S + Math.sin(sp) * 4, 2 * S, 2 * S);
+      g.fillRect(8 * S, -14 * S + Math.cos(sp) * 4, 2 * S, 2 * S);
+      g.fillRect(-6 * S, -28 * S + Math.sin(sp * 1.3) * 3, 2 * S, 2 * S);
+    }
+    if (this.agentData.status === 'error') {
+      // Red blink
+      if (Math.floor(frame * 0.05) % 2 === 0) {
+        g.fillStyle(0xff2244, 0.35);
+        g.fillRect(-6 * S, -26 * S, 12 * S, 36 * S);
+      }
+    }
+  }
+
+  /**
+   * Forge (herrero) — delantal naranja, casco, martillo.
+   * Grid 12px wide * 18px tall, origin centro-bajo.
+   */
+  private drawForgeAgent(g: Phaser.GameObjects.Graphics, S: number, frame: number): void {
+    const dir = this.moveDir;
+    const working = this.agentData.status === 'working';
+    const hammerBob = working ? Math.sin(this.walkCycle * 0.2) * 3 : 0;
+    const legSwing = this.isMoving ? Math.sin(this.walkCycle * 0.15) * 2 : 0;
+
+    // Shadow
+    g.fillStyle(0x000000, 0.25);
+    g.fillEllipse(0, 42, 44, 10);
+
+    // Boots
+    g.fillStyle(0x4a2810);
+    g.fillRect((-3 + legSwing) * S, 9 * S, 4 * S, 3 * S);
+    g.fillRect((0 - legSwing) * S, 9 * S, 4 * S, 3 * S);
+    // Boot highlights
+    g.lineStyle(1, 0x6b3a18, 0.7);
+    g.strokeRect((-3 + legSwing) * S, 9 * S, 4 * S, 3 * S);
+
+    // Pants — dark brown
+    g.fillStyle(0x3a2010);
+    g.fillRect(-4 * S, 6 * S, 8 * S, 4 * S);
+
+    // Leather apron — dark ochre
+    g.fillStyle(0x7a5010);
+    g.fillRect(-5 * S, 0, 10 * S, 9 * S);
+    // Apron inner
+    g.fillStyle(0x5a3a08);
+    g.fillRect(-4 * S, S, 8 * S, 7 * S);
+    // Apron ties
+    g.fillStyle(0x8a6020);
+    g.fillRect(-6 * S, 0, 2 * S, 7 * S);
+    g.fillRect(4 * S, 0, 2 * S, 7 * S);
+
+    // Arms
+    const armY = S;
+    const armColor = 0xee7700;
+    g.fillStyle(armColor);
+    g.fillRect(-8 * S, armY, 3 * S, 5 * S);
+    g.fillRect(5 * S, armY, 3 * S, 5 * S);
+
+    // Hammer (dominant hand)
+    const hamX = dir > 0 ? 7 * S : -9 * S;
+    const hamY = hammerBob;
+    // Handle
+    g.fillStyle(0x7a4a18);
+    g.fillRect(hamX, armY + hamY, 2 * S, 7 * S);
+    // Hammer head
+    g.fillStyle(0x666666);
+    g.fillRect(hamX - S, armY + hamY - 2 * S, 4 * S, 3 * S);
+    g.fillStyle(0x888888);
+    g.fillRect(hamX - S, armY + hamY - 2 * S, 4 * S, S);
+    g.lineStyle(1, 0x444444, 1);
+    g.strokeRect(hamX - S, armY + hamY - 2 * S, 4 * S, 3 * S);
+
+    // Neck
+    g.fillStyle(0xffcc88);
+    g.fillRect(-2 * S, -8 * S, 4 * S, 2 * S);
+
+    // Head
+    g.fillStyle(0xffcc88);
+    g.fillRect(-4 * S, -14 * S, 8 * S, 7 * S);
+    g.lineStyle(1, 0xcc9966, 0.5);
+    g.strokeRect(-4 * S, -14 * S, 8 * S, 7 * S);
+
+    // Sideburns / beard stubble
+    g.fillStyle(0xdd5500);
+    g.fillRect(-4 * S, -11 * S, S, 3 * S);
+    g.fillRect(3 * S, -11 * S, S, 3 * S);
+    g.fillRect(-3 * S, -9 * S, S, 2 * S);
+    g.fillRect(2 * S, -9 * S, S, 2 * S);
 
     // Eyes
     g.fillStyle(0x222222);
-    g.fillRect(-3 * S, -4 * S + workBob, 2 * S, 2 * S);
-    g.fillRect(1 * S, -4 * S + workBob, 2 * S, 2 * S);
+    g.fillRect(-3 * S, -12 * S, S + 1, S + 1);
+    g.fillRect(2 * S, -12 * S, S + 1, S + 1);
+    // Eye whites
+    g.fillStyle(0xffffff);
+    g.fillRect(-3 * S, -12 * S, 2, 2);
+    g.fillRect(2 * S, -12 * S, 2, 2);
 
-    // Arms
-    g.fillStyle(0xee6600);
-    g.fillRect(-8 * S, 2 * S + workBob, 3 * S, 5 * S);
-    g.fillRect(5 * S, 2 * S + workBob, 3 * S, 5 * S);
+    // Nose
+    g.fillStyle(0xee9966);
+    g.fillRect(-S, -10 * S, 2 * S, S);
 
-    // Hammer (right hand)
-    g.fillStyle(0x888888);
-    g.fillRect(7 * S, 0 * S + workBob - (this.agentData.status === 'working' ? frame % 2 * 3 : 0), 2 * S, 7 * S);
-    g.fillStyle(0x555555);
-    g.fillRect(6 * S, -1 * S + workBob - (this.agentData.status === 'working' ? frame % 2 * 3 : 0), 4 * S, 3 * S);
+    // Helmet — orange with yellow stripe
+    g.fillStyle(0xdd5500);
+    g.fillRect(-5 * S, -21 * S, 10 * S, 8 * S);
+    // Helmet dome
+    g.fillStyle(0xff6600);
+    g.fillRect(-4 * S, -24 * S, 8 * S, 4 * S);
+    g.fillStyle(0xff8833);
+    g.fillRect(-3 * S, -25 * S, 6 * S, 2 * S);
+    g.fillStyle(0xff9944);
+    g.fillRect(-2 * S, -26 * S, 4 * S, S);
+    // Helmet brim
+    g.fillStyle(0xcc4400);
+    g.fillRect(-6 * S, -16 * S, 12 * S, 2 * S);
+    // Helmet stripe
+    g.fillStyle(0xffdd00);
+    g.fillRect(-S, -25 * S, 2 * S, 10 * S);
+    // Visor slit
+    g.fillStyle(0x221100);
+    g.fillRect(-4 * S, -20 * S, 8 * S, 2 * S);
+    g.lineStyle(1, 0x331100, 1);
+    g.strokeRect(-5 * S, -21 * S, 10 * S, 8 * S);
 
-    // Boots
-    g.fillStyle(0x553311);
-    g.fillRect(-5 * S, 9 * S + workBob, 4 * S, 3 * S);
-    g.fillRect(1 * S, 9 * S + workBob, 4 * S, 3 * S);
-
-    // Done: thumbs up
+    // Status effects
     if (this.agentData.status === 'done') {
-      g.fillStyle(0x00ff88);
-      g.fillRect(-8 * S, 1 * S, 2 * S, 3 * S);
-      g.fillRect(-9 * S, 0, 2 * S, 2 * S);
+      // Thumbs up
+      g.fillStyle(0xffcc88);
+      g.fillRect(-9 * S, -3 * S, 3 * S, 3 * S);
+      g.fillRect(-10 * S, -4 * S, 2 * S, 2 * S);
+      g.fillStyle(0x00ff88, 0.8);
+      g.fillCircle(-8 * S, -4 * S, 6);
     }
-
-    // Error: red blink
-    if (this.agentData.status === 'error' && frame % 4 < 2) {
-      g.fillStyle(0xff2244, 0.6);
-      g.fillRect(-5 * S, -13 * S, 10 * S, 26 * S);
+    if (this.agentData.status === 'error') {
+      // Red flicker
+      if (Math.floor(frame * 0.05) % 2 === 0) {
+        g.fillStyle(0xff2244, 0.4);
+        g.fillRect(-6 * S, -26 * S, 12 * S, 36 * S);
+      }
+      // Smoke wisps
+      g.fillStyle(0x888888, 0.3);
+      g.fillCircle(-5 * S, -30 * S, 8);
+      g.fillCircle(-3 * S, -35 * S, 6);
     }
   }
 
-  private buildUI(): void {
-    const color = STATUS_COLORS[this.agentData.status] ?? 0xffffff;
-
-    // Card background
-    const card = this.scene.add.graphics();
-    card.fillStyle(0x111122, 0.9);
-    card.lineStyle(2, color, 1);
-    card.fillRoundedRect(-48, -55, 96, 115, 4);
-    card.strokeRoundedRect(-48, -55, 96, 115, 4);
-    this.add(card);
-    this.sendToBack(card);
-
-    // Status dot
-    this.statusDot = this.scene.add.graphics();
-    this.add(this.statusDot);
-    this.updateStatusDot();
-
-    // Name
-    this.nameText = this.scene.add.text(0, 48, this.agentData.name, {
-      fontFamily: '"Press Start 2P"',
-      fontSize: '6px',
-      color: '#ffffff',
-      align: 'center',
-    }).setOrigin(0.5, 0);
-    this.add(this.nameText);
-
-    // Status
-    this.statusText = this.scene.add.text(0, 58, this.agentData.status.toUpperCase(), {
-      fontFamily: '"Press Start 2P"',
-      fontSize: '5px',
-      color: Phaser.Display.Color.IntegerToColor(color).rgba,
-      align: 'center',
-    }).setOrigin(0.5, 0);
-    this.add(this.statusText);
-  }
-
-  private updateStatusDot(): void {
-    const color = STATUS_COLORS[this.agentData.status] ?? 0xffffff;
-    this.statusDot.clear();
-    this.statusDot.fillStyle(color);
-    this.statusDot.fillCircle(30, -40, 5);
+  private spawnMagicParticle(): void {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = Phaser.Math.FloatBetween(0.5, 2);
+    this.particles.push({
+      x: 0,
+      y: -20,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 1,
+      life: 1,
+      color: [0xcc44ff, 0xff88ff, 0xffffff, 0x8844ff][Phaser.Math.Between(0, 3)],
+    });
   }
 
   update(delta: number): void {
     this.animTimer += delta;
-    if (this.animTimer > 300) {
-      this.animTimer = 0;
-      this.animFrame++;
-      this.drawSprite(this.animFrame);
+    this.idleTimer += delta;
+
+    // Walk cycle
+    if (this.isMoving) {
+      this.walkCycle += delta * 0.12;
     }
 
-    // Pulsing status dot
-    const pulse = 0.7 + 0.3 * Math.sin(Date.now() * 0.003);
-    this.statusDot.setAlpha(pulse);
+    // Advance animation frame
+    if (this.animTimer > 180) {
+      this.animTimer = 0;
+      this.animFrame++;
+    }
+
+    // Spawn particles for orchestrating/working
+    if (this.agentData.status === 'orchestrating' && Math.random() < 0.06) {
+      this.spawnMagicParticle();
+    }
+
+    // Update particles
+    const dt = delta / 16;
+    this.particles = this.particles.filter(p => p.life > 0);
+    for (const p of this.particles) {
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.vy += 0.05 * dt;
+      p.life -= dt * 0.04;
+    }
+
+    // Idle movement between waypoints
+    if (this.idleWaypoints.length > 0 && !this.taskTarget) {
+      if (!this.isMoving && this.idleTimer > this.idlePause) {
+        this.idleTimer = 0;
+        this.idlePause = Phaser.Math.Between(1200, 3500);
+        this.currentWaypointIndex = (this.currentWaypointIndex + 1) % this.idleWaypoints.length;
+        const wp = this.idleWaypoints[this.currentWaypointIndex];
+        this.walkTo(wp.x, wp.y);
+      }
+    }
+
+    // Move to task target
+    if (this.taskTarget && !this.isMoving) {
+      this.walkTo(this.taskTarget.x, this.taskTarget.y);
+    }
+
+    this.drawParticles();
+    this.drawSprite();
+  }
+
+  walkTo(tx: number, ty: number): void {
+    if (Math.abs(tx - this.x) < 5 && Math.abs(ty - this.y) < 5) return;
+    this.moveDir = tx > this.x ? 1 : -1;
+    this.isMoving = true;
+    const dist = Phaser.Math.Distance.Between(this.x, this.y, tx, ty);
+    const duration = Math.max(600, dist * 3.5);
+    this.scene.tweens.add({
+      targets: this,
+      x: tx,
+      y: ty,
+      duration,
+      ease: 'Sine.easeInOut',
+      onComplete: () => {
+        this.isMoving = false;
+        this.taskTarget = null;
+      },
+    });
+  }
+
+  private drawParticles(): void {
+    const g = this.particleGfx;
+    g.clear();
+    for (const p of this.particles) {
+      g.fillStyle(p.color, p.life);
+      g.fillRect(p.x - 2, p.y - 2, 4, 4);
+    }
   }
 
   updateData(data: AgentData): void {
     this.agentData = data;
-    this.updateStatusDot();
     const color = STATUS_COLORS[data.status] ?? 0xffffff;
     this.statusText.setText(data.status.toUpperCase());
     this.statusText.setColor(Phaser.Display.Color.IntegerToColor(color).rgba);
@@ -240,36 +474,71 @@ export class Agent extends Phaser.GameObjects.Container {
 
   private showTooltip(): void {
     if (this.tooltip) return;
-
     const lines = [
-      `ID: ${this.agentData.id}`,
+      `${this.agentData.name}`,
+      `Estado: ${this.agentData.status}`,
       `Modelo: ${this.agentData.model}`,
       `Tarea: ${this.agentData.currentTask ?? 'ninguna'}`,
-      `Estado: ${this.agentData.status}`,
     ];
-
+    const w = 200, lh = 14;
     const bg = this.scene.add.graphics();
-    bg.fillStyle(0x0a0a1a, 0.95);
-    bg.lineStyle(1, 0x00ccff);
-    bg.fillRoundedRect(0, 0, 180, lines.length * 14 + 10, 4);
-    bg.strokeRoundedRect(0, 0, 180, lines.length * 14 + 10, 4);
-
+    bg.fillStyle(0x111122, 0.95);
+    bg.lineStyle(2, STATUS_COLORS[this.agentData.status] ?? 0x4488ff);
+    bg.fillRoundedRect(0, 0, w, lines.length * lh + 12, 4);
+    bg.strokeRoundedRect(0, 0, w, lines.length * lh + 12, 4);
     const texts = lines.map((line, i) =>
-      this.scene.add.text(8, 6 + i * 14, line, {
+      this.scene.add.text(8, 6 + i * lh, line, {
         fontFamily: '"Press Start 2P"',
         fontSize: '5px',
-        color: '#00ccff',
+        color: Phaser.Display.Color.IntegerToColor(STATUS_COLORS[this.agentData.status] ?? 0x00ccff).rgba,
       })
     );
-
-    this.tooltip = this.scene.add.container(this.x + 52, this.y - 30, [bg, ...texts]);
-    this.tooltip.setDepth(200);
+    this.tooltip = this.scene.add.container(this.x + 34, this.y - 40, [bg, ...texts]);
+    this.tooltip.setDepth(300);
   }
 
   private hideTooltip(): void {
-    if (this.tooltip) {
-      this.tooltip.destroy();
-      this.tooltip = null;
+    if (this.tooltip) { this.tooltip.destroy(); this.tooltip = null; }
+  }
+
+  private showSpeechBubble(): void {
+    if (this.speechBubble) return;
+    const task = this.agentData.currentTask;
+    let text: string;
+    if (this.isPercival) {
+      text = this.agentData.status === 'orchestrating'
+        ? `Orquestando: ${task ?? '???'}`
+        : this.agentData.status === 'thinking'
+        ? '...pensando en el plan...'
+        : '¡OASIS te necesita!';
+    } else {
+      text = this.agentData.status === 'working'
+        ? `Forjando: ${task ?? '???'}`
+        : this.agentData.status === 'done'
+        ? '¡Misión completada!'
+        : this.agentData.status === 'error'
+        ? '¡Algo salió mal!'
+        : 'En espera de órdenes.';
     }
+    const w = 180;
+    const bg = this.scene.add.graphics();
+    bg.fillStyle(0xffffff, 0.95);
+    bg.lineStyle(2, 0x222222, 1);
+    bg.fillRoundedRect(0, 0, w, 30, 6);
+    bg.strokeRoundedRect(0, 0, w, 30, 6);
+    // Bubble tail
+    bg.fillTriangle(20, 30, 30, 30, 25, 40);
+    bg.strokeTriangle(20, 30, 30, 30, 25, 40);
+    const txt = this.scene.add.text(8, 8, text, {
+      fontFamily: '"Press Start 2P"',
+      fontSize: '5px',
+      color: '#222222',
+      wordWrap: { width: 164 },
+    });
+    this.speechBubble = this.scene.add.container(this.x - 24, this.y - 80, [bg, txt]);
+    this.speechBubble.setDepth(350);
+    this.scene.time.delayedCall(3000, () => {
+      if (this.speechBubble) { this.speechBubble.destroy(); this.speechBubble = null; }
+    });
   }
 }
