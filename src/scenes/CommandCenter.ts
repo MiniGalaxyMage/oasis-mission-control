@@ -36,10 +36,70 @@ export class CommandCenter extends Phaser.Scene {
   }
 
   preload(): void {
-    // Everything drawn programmatically — no external assets
+    // === Sprites de personajes ===
+    this.load.spritesheet('percival-idle', './assets/sprites/percival-idle.png', {
+      frameWidth: 341, frameHeight: 512,
+    });
+    this.load.spritesheet('forge-idle', './assets/sprites/forge-idle.png', {
+      frameWidth: 256, frameHeight: 1024,
+    });
+    this.load.spritesheet('forge-working', './assets/sprites/forge-working.png', {
+      frameWidth: 341, frameHeight: 512,
+    });
+    this.load.spritesheet('sprite-idle', './assets/sprites/sprite-idle.png', {
+      frameWidth: 256, frameHeight: 1024,
+    });
+
+    // === Objetos / props ===
+    this.load.image('anvil', './assets/objects/anvil.png');
+    this.load.image('strategy-table', './assets/objects/strategy-table.png');
+    this.load.spritesheet('treasure-chest', './assets/objects/treasure-chest.png', {
+      frameWidth: 512, frameHeight: 1024,
+    });
+    this.load.image('easel', './assets/objects/easel.png');
+  }
+
+  private registerAnimations(): void {
+    // Percival idle (6 frames, 3x2)
+    if (!this.anims.exists('percival-idle')) {
+      this.anims.create({
+        key: 'percival-idle',
+        frames: this.anims.generateFrameNumbers('percival-idle', { start: 0, end: 5 }),
+        frameRate: 6,
+        repeat: -1,
+      });
+    }
+    // Forge idle (4 frames, 4x1)
+    if (!this.anims.exists('forge-idle')) {
+      this.anims.create({
+        key: 'forge-idle',
+        frames: this.anims.generateFrameNumbers('forge-idle', { start: 0, end: 3 }),
+        frameRate: 6,
+        repeat: -1,
+      });
+    }
+    // Forge working (6 frames, 3x2)
+    if (!this.anims.exists('forge-working')) {
+      this.anims.create({
+        key: 'forge-working',
+        frames: this.anims.generateFrameNumbers('forge-working', { start: 0, end: 5 }),
+        frameRate: 10,
+        repeat: -1,
+      });
+    }
+    // Sprite/hada idle (4 frames, 4x1)
+    if (!this.anims.exists('sprite-idle')) {
+      this.anims.create({
+        key: 'sprite-idle',
+        frames: this.anims.generateFrameNumbers('sprite-idle', { start: 0, end: 3 }),
+        frameRate: 6,
+        repeat: -1,
+      });
+    }
   }
 
   create(): void {
+    this.registerAnimations();
     this.loadSnapshot().then(snap => {
       this.snapshot = snap;
       this.buildCastleScene();
@@ -148,8 +208,12 @@ export class CommandCenter extends Phaser.Scene {
 
     this.snapshot.agents.forEach((agentData) => {
       const isPercival = agentData.id === 'percival';
-      // Initial position
-      const startX = isPercival ? Math.floor(W * 0.5) : Math.floor(W * 0.3);
+      const isSpriteChar = agentData.id === 'sprite';
+
+      let startX: number;
+      if (isPercival) startX = Math.floor(W * 0.5);
+      else if (isSpriteChar) startX = Math.floor(W * 0.78);
+      else startX = Math.floor(W * 0.3);
       const startY = floorCenterY;
 
       const agent = new Agent(this, startX, startY, agentData);
@@ -158,7 +222,6 @@ export class CommandCenter extends Phaser.Scene {
       this.agentSprites.set(agentData.id, agent);
 
       if (isPercival) {
-        // Percival wanders around the strategy table area
         const wanderPoints = [
           { x: layout.tableX - 80, y: floorCenterY },
           { x: layout.tableX, y: floorCenterY - 10 },
@@ -167,25 +230,34 @@ export class CommandCenter extends Phaser.Scene {
           { x: Math.floor(W * 0.55), y: Math.floor(floorY + (H - floorY) * 0.85) },
         ];
         agent.setIdleWaypoints(wanderPoints);
-
-        // If orchestrating/thinking → go to strategy table
         if (agentData.status === 'orchestrating' || agentData.status === 'thinking') {
           agent.setTaskTarget({ x: layout.tableX, y: floorCenterY });
         }
+      } else if (isSpriteChar) {
+        // Sprite (hada) ronda por el lado derecho, cerca del caballete
+        const spriteWander = [
+          { x: layout.easelX - 40, y: floorCenterY },
+          { x: layout.easelX + 20, y: floorCenterY - 15 },
+          { x: layout.easelX - 10, y: Math.floor(floorY + (H - floorY) * 0.80) },
+          { x: Math.floor(W * 0.82), y: floorCenterY },
+        ];
+        agent.setIdleWaypoints(spriteWander);
+        // Si está working → junto al caballete
+        if (agentData.status === 'working') {
+          agent.setTaskTarget({ x: layout.easelX, y: floorCenterY });
+        }
       } else {
-        // Forge agents wander in their zone
+        // Forge agents
         const forgeWander = [
           { x: Math.floor(W * 0.25), y: floorCenterY },
           { x: Math.floor(W * 0.35), y: floorCenterY },
           { x: Math.floor(W * 0.3), y: Math.floor(floorY + (H - floorY) * 0.8) },
           { x: Math.floor(W * 0.4), y: Math.floor(floorY + (H - floorY) * 0.75) },
         ];
-        // Offset multiple forge agents so they don't stack
-        const forgeIndex = [...this.agentSprites.keys()].filter(k => k !== 'percival').indexOf(agentData.id);
+        const forgeKeys = [...this.agentSprites.keys()].filter(k => k !== 'percival' && k !== 'sprite');
+        const forgeIndex = forgeKeys.indexOf(agentData.id);
         const offsetX = forgeIndex * 60;
         agent.setIdleWaypoints(forgeWander.map(wp => ({ x: wp.x + offsetX, y: wp.y })));
-
-        // If working → go to anvil
         if (agentData.status === 'working') {
           const anvX = layout.smithyX + 10 + forgeIndex * 20;
           agent.setTaskTarget({ x: anvX, y: layout.smithyY - 10 });
@@ -294,6 +366,10 @@ export class CommandCenter extends Phaser.Scene {
         if (agentData.id === 'percival') {
           if (agentData.status === 'orchestrating' || agentData.status === 'thinking') {
             sprite.setTaskTarget({ x: layout.tableX, y: floorCenterY });
+          }
+        } else if (agentData.id === 'sprite') {
+          if (agentData.status === 'working') {
+            sprite.setTaskTarget({ x: layout.easelX, y: floorCenterY });
           }
         } else {
           if (agentData.status === 'working') {

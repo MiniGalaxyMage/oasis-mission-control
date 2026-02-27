@@ -29,6 +29,14 @@
       "currentTask": "feature/snapshot-generator",
       "model": "sonnet",
       "startedAt": "2026-02-27T13:15:00Z"
+    },
+    {
+      "id": "sprite",
+      "name": "Sprite",
+      "status": "working",
+      "currentTask": "ui/pixel-art-assets",
+      "model": "gemini",
+      "startedAt": "2026-02-27T13:15:00Z"
     }
   ],
   "tasks": [

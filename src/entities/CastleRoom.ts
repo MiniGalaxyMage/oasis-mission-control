@@ -15,6 +15,8 @@ export interface RoomLayout {
   scrollsY: number;
   chestX: number;
   chestY: number;
+  easelX: number;       // caballete (sprite fairy workspace)
+  easelY: number;
   gemX: number;         // heartbeat gem
   gemY: number;
   torch1X: number;
@@ -55,6 +57,8 @@ export class CastleRoom {
       scrollsY: wallTopY + Math.floor((floorY - wallTopY) * 0.38),
       chestX: Math.floor(W * 0.87),
       chestY: Math.floor(H * 0.83),
+      easelX: Math.floor(W * 0.76),
+      easelY: Math.floor(H * 0.72),
       gemX: Math.floor(W * 0.93),
       gemY: wallTopY + Math.floor((floorY - wallTopY) * 0.35),
       torch1X: Math.floor(W * 0.38),
@@ -74,6 +78,7 @@ export class CastleRoom {
     this.drawWindow(W * 0.5, wallTopY + (floorY - wallTopY) * 0.32, floorY, wallTopY);
     this.drawTorchBrackets();
     this.drawStrategyTable();
+    this.drawEasel();
     this.drawBaseboards(W, floorY);
     // Torch animated graphics layer
     this.torches = [
@@ -264,53 +269,40 @@ export class CastleRoom {
 
   private drawStrategyTable(): void {
     const { tableX, tableY } = this.layout;
-    const g = this.scene.add.graphics().setDepth(2);
-    const tW = 220, tH = 90;
-    // Shadow
-    g.fillStyle(0x000000, 0.25);
-    g.fillRect(tableX - tW / 2 + 8, tableY - tH / 2 + 8, tW, tH + 40);
-    // Legs
-    g.fillStyle(0x3d2510);
-    g.fillRect(tableX - tW / 2 + 12, tableY + tH / 2 - 10, 14, 40);
-    g.fillRect(tableX + tW / 2 - 26, tableY + tH / 2 - 10, 14, 40);
-    g.fillRect(tableX - tW / 2 + 12, tableY + tH / 2 - 12, 14, 40);
-    g.fillRect(tableX + tW / 2 - 26, tableY + tH / 2 - 12, 14, 40);
-    // Table surface
-    g.fillStyle(0x6b3d18);
-    g.fillRect(tableX - tW / 2, tableY - tH / 2, tW, tH);
-    g.lineStyle(3, 0x3d2010, 1);
-    g.strokeRect(tableX - tW / 2, tableY - tH / 2, tW, tH);
-    // Table edge highlight
-    g.lineStyle(1, 0x8b5a28, 0.7);
-    g.lineBetween(tableX - tW / 2 + 2, tableY - tH / 2 + 2, tableX + tW / 2 - 2, tableY - tH / 2 + 2);
-    g.lineBetween(tableX - tW / 2 + 2, tableY - tH / 2 + 2, tableX - tW / 2 + 2, tableY + tH / 2 - 2);
-    // Parchment map
-    g.fillStyle(0xd4b06a);
-    g.fillRect(tableX - 78, tableY - tH / 2 + 10, 156, 62);
-    // Map edge shadow
-    g.lineStyle(2, 0x8b7040, 1);
-    g.strokeRect(tableX - 78, tableY - tH / 2 + 10, 156, 62);
-    // Map grid
-    g.lineStyle(1, 0xaa8848, 0.6);
-    for (let i = 1; i < 5; i++) {
-      g.lineBetween(tableX - 78 + i * 31, tableY - tH / 2 + 10, tableX - 78 + i * 31, tableY - tH / 2 + 72);
-    }
-    for (let i = 1; i < 3; i++) {
-      g.lineBetween(tableX - 78, tableY - tH / 2 + 10 + i * 20, tableX + 78, tableY - tH / 2 + 10 + i * 20);
-    }
-    // Map markers
-    g.fillStyle(0xff2244);
-    g.fillCircle(tableX - 22, tableY - tH / 2 + 30, 5);
-    g.fillCircle(tableX + 28, tableY - tH / 2 + 50, 5);
-    g.fillStyle(0x2244ff);
-    g.fillCircle(tableX + 8, tableY - tH / 2 + 22, 4);
-    g.fillStyle(0x00aa44);
-    g.fillCircle(tableX - 48, tableY - tH / 2 + 55, 4);
-    // Marker rings
-    g.lineStyle(1, 0xaa0022);
-    g.strokeCircle(tableX - 22, tableY - tH / 2 + 30, 9);
+    // Sombra bajo la mesa
+    const shadow = this.scene.add.graphics().setDepth(2);
+    shadow.fillStyle(0x000000, 0.22);
+    shadow.fillEllipse(tableX, tableY + 30, 240, 30);
+
+    // Sprite real de Gemini
+    const img = this.scene.add.image(tableX, tableY, 'strategy-table');
+    img.setDisplaySize(230, 120);
+    img.setOrigin(0.5, 0.5);
+    img.setDepth(2);
+
     // Label
-    this.scene.add.text(tableX, tableY + tH / 2 + 10, '⚔ Mesa de Estrategia', {
+    this.scene.add.text(tableX, tableY + 66, '⚔ Mesa de Estrategia', {
+      fontFamily: '"Press Start 2P"',
+      fontSize: '5px',
+      color: '#8b6040',
+    }).setOrigin(0.5, 0).setDepth(3);
+  }
+
+  private drawEasel(): void {
+    const { easelX, easelY } = this.layout;
+    // Sombra
+    const shadow = this.scene.add.graphics().setDepth(2);
+    shadow.fillStyle(0x000000, 0.18);
+    shadow.fillEllipse(easelX, easelY + 40, 80, 18);
+
+    // Sprite real del caballete
+    const img = this.scene.add.image(easelX, easelY, 'easel');
+    img.setDisplaySize(90, 110);
+    img.setOrigin(0.5, 0.5);
+    img.setDepth(2);
+
+    // Label
+    this.scene.add.text(easelX, easelY + 58, '🎨 Caballete', {
       fontFamily: '"Press Start 2P"',
       fontSize: '5px',
       color: '#8b6040',
