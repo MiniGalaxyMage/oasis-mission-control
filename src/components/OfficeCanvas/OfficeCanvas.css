@@ -1,0 +1,9 @@
+.office-canvas-wrapper {
+  flex: 0 0 70%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #111;
+  position: relative;
+}

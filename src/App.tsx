@@ -1,7 +1,7 @@
 import './App.css'
 import { useSnapshot } from './hooks/useSnapshot'
 import { Header } from './components/Header/Header'
-import { Room } from './components/Room/Room'
+import { OfficeCanvas } from './components/OfficeCanvas/OfficeCanvas'
 import { Sidebar } from './components/Sidebar/Sidebar'
 import { Footer } from './components/Footer/Footer'
 
@@ -12,7 +12,7 @@ function App() {
     <div className="app-layout">
       <Header snapshot={snapshot} />
       <div className="main-content">
-        <Room agents={snapshot?.agents ?? []} />
+        <OfficeCanvas agents={snapshot?.agents ?? []} />
         <Sidebar snapshot={snapshot} />
       </div>
       <Footer timestamp={snapshot?.timestamp ?? null} />
