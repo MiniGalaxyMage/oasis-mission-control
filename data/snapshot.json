@@ -1,0 +1,394 @@
+{
+  "timestamp": "2026-02-27T12:08:08.987Z",
+  "heartbeat": {
+    "lastCheck": "2026-02-27T12:08:05.462Z",
+    "status": "error",
+    "minutesAgo": 999
+  },
+  "agents": [
+    {
+      "id": "percival",
+      "name": "Percival",
+      "status": "error",
+      "currentTask": null,
+      "model": "opus",
+      "startedAt": null
+    },
+    {
+      "id": "forge-alpha",
+      "name": "Forge Alpha",
+      "status": "working",
+      "currentTask": "feature/phaser-dashboard",
+      "model": "sonnet",
+      "startedAt": "2026-02-27T13:15:00Z"
+    },
+    {
+      "id": "forge-beta",
+      "name": "Forge Beta",
+      "status": "working",
+      "currentTask": "feature/snapshot-generator",
+      "model": "sonnet",
+      "startedAt": "2026-02-27T13:15:00Z"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "mc-001",
+      "branch": "feature/phaser-dashboard",
+      "title": "Phaser.js Dashboard con Command Center",
+      "agent": "forge-alpha",
+      "status": "in-progress",
+      "repo": "oasis-mission-control",
+      "retries": 0
+    },
+    {
+      "id": "mc-002",
+      "branch": "feature/snapshot-generator",
+      "title": "Snapshot JSON Generator",
+      "agent": "forge-beta",
+      "status": "in-progress",
+      "repo": "oasis-mission-control",
+      "retries": 0
+    }
+  ],
+  "pullRequests": [
+    {
+      "number": 10,
+      "title": "feat: creación segura de usuarios con contraseña aleatoria y email",
+      "repo": "JISBACK",
+      "url": "https://github.com/CarlosDez23/JISBACK/pull/10",
+      "status": "merged",
+      "ci": "none",
+      "reviews": "pending",
+      "author": "MiniGalaxyMage",
+      "createdAt": "2026-02-26T17:52:25Z"
+    },
+    {
+      "number": 9,
+      "title": "test: verificar Gemini Code Assist",
+      "repo": "JISBACK",
+      "url": "https://github.com/CarlosDez23/JISBACK/pull/9",
+      "status": "closed",
+      "ci": "none",
+      "reviews": "pending",
+      "author": "MiniGalaxyMage",
+      "createdAt": "2026-02-26T15:27:11Z"
+    },
+    {
+      "number": 8,
+      "title": "feat: exportación de Excel para usuarios y temas",
+      "repo": "JISBACK",
+      "url": "https://github.com/CarlosDez23/JISBACK/pull/8",
+      "status": "merged",
+      "ci": "none",
+      "reviews": "none",
+      "author": "MiniGalaxyMage",
+      "createdAt": "2026-02-26T12:52:17Z"
+    },
+    {
+      "number": 7,
+      "title": "fix: porcentajes en Excel se guardaban como 0",
+      "repo": "JISBACK",
+      "url": "https://github.com/CarlosDez23/JISBACK/pull/7",
+      "status": "merged",
+      "ci": "none",
+      "reviews": "none",
+      "author": "MiniGalaxyMage",
+      "createdAt": "2026-02-26T09:31:14Z"
+    },
+    {
+      "number": 6,
+      "title": "Migrar email a Brevo HTTP API + envío asíncrono",
+      "repo": "JISBACK",
+      "url": "https://github.com/CarlosDez23/JISBACK/pull/6",
+      "status": "merged",
+      "ci": "none",
+      "reviews": "none",
+      "author": "CarlosDez23",
+      "createdAt": "2026-02-25T12:51:51Z"
+    },
+    {
+      "number": 5,
+      "title": "Foros y envío de correos",
+      "repo": "JISBACK",
+      "url": "https://github.com/CarlosDez23/JISBACK/pull/5",
+      "status": "merged",
+      "ci": "none",
+      "reviews": "none",
+      "author": "CarlosDez23",
+      "createdAt": "2026-02-24T21:35:09Z"
+    },
+    {
+      "number": 4,
+      "title": "Eventos y calendario de eventos",
+      "repo": "JISBACK",
+      "url": "https://github.com/CarlosDez23/JISBACK/pull/4",
+      "status": "merged",
+      "ci": "none",
+      "reviews": "none",
+      "author": "CarlosDez23",
+      "createdAt": "2026-02-23T19:17:18Z"
+    },
+    {
+      "number": 3,
+      "title": "Add bulk load feature for users and topics via Excel upload",
+      "repo": "JISBACK",
+      "url": "https://github.com/CarlosDez23/JISBACK/pull/3",
+      "status": "merged",
+      "ci": "none",
+      "reviews": "none",
+      "author": "CarlosDez23",
+      "createdAt": "2026-02-18T18:59:20Z"
+    },
+    {
+      "number": 2,
+      "title": "Incidencias y estadísticas",
+      "repo": "JISBACK",
+      "url": "https://github.com/CarlosDez23/JISBACK/pull/2",
+      "status": "merged",
+      "ci": "none",
+      "reviews": "none",
+      "author": "CarlosDez23",
+      "createdAt": "2026-02-14T11:49:20Z"
+    },
+    {
+      "number": 1,
+      "title": "Seguridad y avisos",
+      "repo": "JISBACK",
+      "url": "https://github.com/CarlosDez23/JISBACK/pull/1",
+      "status": "merged",
+      "ci": "none",
+      "reviews": "none",
+      "author": "CarlosDez23",
+      "createdAt": "2026-02-13T09:10:02Z"
+    },
+    {
+      "number": 22,
+      "title": "feat: rediseño visual del panel admin (comunidades, materias, preguntas)",
+      "repo": "jis-test-prep",
+      "url": "https://github.com/CarlosDez23/jis-test-prep/pull/22",
+      "status": "merged",
+      "ci": "none",
+      "reviews": "pending",
+      "author": "MiniGalaxyMage",
+      "createdAt": "2026-02-26T16:02:54Z"
+    },
+    {
+      "number": 21,
+      "title": "feat: botones de exportación Excel en panel admin",
+      "repo": "jis-test-prep",
+      "url": "https://github.com/CarlosDez23/jis-test-prep/pull/21",
+      "status": "merged",
+      "ci": "none",
+      "reviews": "none",
+      "author": "MiniGalaxyMage",
+      "createdAt": "2026-02-26T13:48:35Z"
+    },
+    {
+      "number": 20,
+      "title": "feat: refrescar vista al cambiar de comunidad en admin",
+      "repo": "jis-test-prep",
+      "url": "https://github.com/CarlosDez23/jis-test-prep/pull/20",
+      "status": "merged",
+      "ci": "none",
+      "reviews": "none",
+      "author": "MiniGalaxyMage",
+      "createdAt": "2026-02-26T10:21:31Z"
+    },
+    {
+      "number": 19,
+      "title": "fix: cambiar 'General' por 'Recordatorio' en avisos",
+      "repo": "jis-test-prep",
+      "url": "https://github.com/CarlosDez23/jis-test-prep/pull/19",
+      "status": "merged",
+      "ci": "failing",
+      "reviews": "none",
+      "author": "MiniGalaxyMage",
+      "createdAt": "2026-02-25T22:36:58Z"
+    },
+    {
+      "number": 18,
+      "title": "fix: persistir filtros al navegar en admin (preguntas y temas)",
+      "repo": "jis-test-prep",
+      "url": "https://github.com/CarlosDez23/jis-test-prep/pull/18",
+      "status": "merged",
+      "ci": "failing",
+      "reviews": "none",
+      "author": "MiniGalaxyMage",
+      "createdAt": "2026-02-25T17:10:51Z"
+    },
+    {
+      "number": 17,
+      "title": "Fixes lista materias",
+      "repo": "jis-test-prep",
+      "url": "https://github.com/CarlosDez23/jis-test-prep/pull/17",
+      "status": "merged",
+      "ci": "none",
+      "reviews": "none",
+      "author": "CarlosDez23",
+      "createdAt": "2026-02-25T16:45:14Z"
+    },
+    {
+      "number": 16,
+      "title": "Foros",
+      "repo": "jis-test-prep",
+      "url": "https://github.com/CarlosDez23/jis-test-prep/pull/16",
+      "status": "merged",
+      "ci": "none",
+      "reviews": "none",
+      "author": "CarlosDez23",
+      "createdAt": "2026-02-24T21:37:04Z"
+    },
+    {
+      "number": 15,
+      "title": "Calendario eventos",
+      "repo": "jis-test-prep",
+      "url": "https://github.com/CarlosDez23/jis-test-prep/pull/15",
+      "status": "merged",
+      "ci": "none",
+      "reviews": "none",
+      "author": "CarlosDez23",
+      "createdAt": "2026-02-23T19:20:37Z"
+    },
+    {
+      "number": 14,
+      "title": "admin-dashboard",
+      "repo": "jis-test-prep",
+      "url": "https://github.com/CarlosDez23/jis-test-prep/pull/14",
+      "status": "merged",
+      "ci": "none",
+      "reviews": "none",
+      "author": "CarlosDez23",
+      "createdAt": "2026-02-23T13:05:08Z"
+    },
+    {
+      "number": 13,
+      "title": "Perfil usuario  y animaciones subida archivos",
+      "repo": "jis-test-prep",
+      "url": "https://github.com/CarlosDez23/jis-test-prep/pull/13",
+      "status": "merged",
+      "ci": "none",
+      "reviews": "none",
+      "author": "CarlosDez23",
+      "createdAt": "2026-02-22T20:28:19Z"
+    },
+    {
+      "number": 12,
+      "title": "Admin cambio de comunidad y listado de simulacros por comunidad",
+      "repo": "jis-test-prep",
+      "url": "https://github.com/CarlosDez23/jis-test-prep/pull/12",
+      "status": "merged",
+      "ci": "none",
+      "reviews": "none",
+      "author": "CarlosDez23",
+      "createdAt": "2026-02-22T12:40:24Z"
+    },
+    {
+      "number": 11,
+      "title": "Simulacros con penalización",
+      "repo": "jis-test-prep",
+      "url": "https://github.com/CarlosDez23/jis-test-prep/pull/11",
+      "status": "merged",
+      "ci": "none",
+      "reviews": "none",
+      "author": "CarlosDez23",
+      "createdAt": "2026-02-22T11:07:55Z"
+    },
+    {
+      "number": 10,
+      "title": "Rediseños",
+      "repo": "jis-test-prep",
+      "url": "https://github.com/CarlosDez23/jis-test-prep/pull/10",
+      "status": "merged",
+      "ci": "none",
+      "reviews": "none",
+      "author": "CarlosDez23",
+      "createdAt": "2026-02-22T00:21:49Z"
+    },
+    {
+      "number": 9,
+      "title": "Rediseños",
+      "repo": "jis-test-prep",
+      "url": "https://github.com/CarlosDez23/jis-test-prep/pull/9",
+      "status": "merged",
+      "ci": "none",
+      "reviews": "none",
+      "author": "CarlosDez23",
+      "createdAt": "2026-02-19T21:50:44Z"
+    },
+    {
+      "number": 8,
+      "title": "Redesign UI: normalize to design system",
+      "repo": "jis-test-prep",
+      "url": "https://github.com/CarlosDez23/jis-test-prep/pull/8",
+      "status": "merged",
+      "ci": "none",
+      "reviews": "none",
+      "author": "CarlosDez23",
+      "createdAt": "2026-02-18T20:40:54Z"
+    },
+    {
+      "number": 7,
+      "title": "bulkload",
+      "repo": "jis-test-prep",
+      "url": "https://github.com/CarlosDez23/jis-test-prep/pull/7",
+      "status": "merged",
+      "ci": "none",
+      "reviews": "none",
+      "author": "CarlosDez23",
+      "createdAt": "2026-02-18T19:05:09Z"
+    },
+    {
+      "number": 6,
+      "title": "environments",
+      "repo": "jis-test-prep",
+      "url": "https://github.com/CarlosDez23/jis-test-prep/pull/6",
+      "status": "merged",
+      "ci": "none",
+      "reviews": "none",
+      "author": "CarlosDez23",
+      "createdAt": "2026-02-17T10:53:51Z"
+    },
+    {
+      "number": 5,
+      "title": "penalizaciones",
+      "repo": "jis-test-prep",
+      "url": "https://github.com/CarlosDez23/jis-test-prep/pull/5",
+      "status": "merged",
+      "ci": "none",
+      "reviews": "none",
+      "author": "CarlosDez23",
+      "createdAt": "2026-02-17T10:30:33Z"
+    },
+    {
+      "number": 4,
+      "title": "Incidencias y arreglo layouts avisos",
+      "repo": "jis-test-prep",
+      "url": "https://github.com/CarlosDez23/jis-test-prep/pull/4",
+      "status": "merged",
+      "ci": "none",
+      "reviews": "none",
+      "author": "CarlosDez23",
+      "createdAt": "2026-02-14T10:28:05Z"
+    },
+    {
+      "number": 3,
+      "title": "Estadísticas",
+      "repo": "jis-test-prep",
+      "url": "https://github.com/CarlosDez23/jis-test-prep/pull/3",
+      "status": "merged",
+      "ci": "none",
+      "reviews": "none",
+      "author": "CarlosDez23",
+      "createdAt": "2026-02-13T13:40:56Z"
+    }
+  ],
+  "stats": {
+    "prsToday": 0,
+    "prsThisWeek": 20,
+    "tasksCompleted": 0,
+    "tasksInProgress": 2,
+    "agentsActive": 2,
+    "lastDeployAt": null
+  }
+}
