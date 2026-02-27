@@ -1,21 +1,22 @@
 import Phaser from 'phaser';
 
 /**
- * Cofre del tesoro — se abre cuando hay PRs mergeadas.
+ * Cofre del tesoro — usa sprite real de Gemini (2 frames: cerrado/abierto).
+ * Se abre cuando hay PRs mergeadas.
  */
 export class TreasureChest {
   private scene: Phaser.Scene;
   public x: number;
   public y: number;
-  private gfx!: Phaser.GameObjects.Graphics;
+  private chestSprite!: Phaser.GameObjects.Sprite;
   private glowGfx!: Phaser.GameObjects.Graphics;
+  private particleGfx!: Phaser.GameObjects.Graphics;
   private particles: Array<{
     x: number; y: number;
     vx: number; vy: number;
     life: number; color: number; size: number;
   }> = [];
   private isOpen = false;
-  private openAnim = 0;   // 0..1 open progress
   private glowTimer = 0;
   private hasMergedPRs = false;
   private tooltip: Phaser.GameObjects.Container | null = null;
@@ -25,9 +26,29 @@ export class TreasureChest {
     this.scene = scene;
     this.x = x;
     this.y = y;
+
     this.glowGfx = scene.add.graphics().setDepth(3);
-    this.gfx = scene.add.graphics().setDepth(4);
-    // Invisible clickable zone
+    this.particleGfx = scene.add.graphics().setDepth(5);
+
+    // Sombra
+    const shadow = scene.add.graphics().setDepth(3);
+    shadow.fillStyle(0x000000, 0.25);
+    shadow.fillEllipse(x, y + 20, 80, 18);
+
+    // Sprite real del cofre (frame 0 = cerrado, frame 1 = abierto)
+    this.chestSprite = scene.add.sprite(x, y, 'treasure-chest', 0);
+    this.chestSprite.setDisplaySize(70, 60);
+    this.chestSprite.setOrigin(0.5, 0.5);
+    this.chestSprite.setDepth(4);
+
+    // Label
+    scene.add.text(x, y + 36, '⚜ Tesoro', {
+      fontFamily: '"Press Start 2P"',
+      fontSize: '5px',
+      color: '#8b6914',
+    }).setOrigin(0.5, 0).setDepth(5);
+
+    // Clickable zone
     this.container = scene.add.container(x, y);
     this.container.setSize(70, 60);
     this.container.setInteractive(new Phaser.Geom.Rectangle(-35, -30, 70, 60), Phaser.Geom.Rectangle.Contains);
@@ -35,7 +56,6 @@ export class TreasureChest {
     this.container.on('pointerout', () => { scene.input.setDefaultCursor('default'); this.hideTooltip(); });
     this.container.on('pointerdown', () => this.onClick());
     this.container.setDepth(10);
-    this.drawChest();
   }
 
   setHasMergedPRs(has: boolean): void {
@@ -53,6 +73,8 @@ export class TreasureChest {
   open(): void {
     if (this.isOpen) return;
     this.isOpen = true;
+    // Cambiar al frame abierto
+    this.chestSprite.setFrame(1);
     // Coin/gem explosion
     for (let i = 0; i < 30; i++) {
       const angle = (i / 30) * Math.PI * 2;
@@ -96,10 +118,25 @@ export class TreasureChest {
 
   update(delta: number): void {
     this.glowTimer += delta * 0.003;
-    if (this.isOpen && this.openAnim < 1) {
-      this.openAnim = Math.min(1, this.openAnim + delta * 0.003);
+
+    // Glow pulsante cuando hay PRs mergeadas y está cerrado
+    const gg = this.glowGfx;
+    gg.clear();
+    if (this.hasMergedPRs && !this.isOpen) {
+      const pulse = 0.5 + 0.5 * Math.sin(this.glowTimer * 3);
+      gg.fillStyle(0xffdd00, 0.08 * pulse);
+      gg.fillCircle(this.x, this.y, 55);
+      gg.fillStyle(0xffaa00, 0.12 * pulse);
+      gg.fillCircle(this.x, this.y, 35);
     }
-    // Update particles
+    if (this.isOpen) {
+      gg.fillStyle(0xffdd00, 0.15);
+      gg.fillCircle(this.x, this.y - 10, 60);
+      gg.fillStyle(0xffffff, 0.10);
+      gg.fillCircle(this.x, this.y - 10, 30);
+    }
+
+    // Partículas
     const dt = delta / 16;
     this.particles = this.particles.filter(p => p.life > 0);
     for (const p of this.particles) {
@@ -108,117 +145,12 @@ export class TreasureChest {
       p.vy += 0.2 * dt;
       p.life -= dt * 0.035;
     }
-    this.drawChest();
     this.drawParticles();
   }
 
-  private drawChest(): void {
-    const { x, y } = this;
-    const g = this.gfx;
-    const gg = this.glowGfx;
-    g.clear();
-    gg.clear();
-
-    const lidAngle = this.openAnim * 80; // degrees
-
-    // Glow when has merged PRs
-    if (this.hasMergedPRs && !this.isOpen) {
-      const pulse = 0.5 + 0.5 * Math.sin(this.glowTimer * 3);
-      gg.fillStyle(0xffdd00, 0.08 * pulse);
-      gg.fillCircle(x, y, 55);
-      gg.fillStyle(0xffaa00, 0.12 * pulse);
-      gg.fillCircle(x, y, 35);
-    }
-    if (this.isOpen) {
-      gg.fillStyle(0xffdd00, 0.15);
-      gg.fillCircle(x, y - 10, 60);
-      gg.fillStyle(0xffffff, 0.1);
-      gg.fillCircle(x, y - 10, 30);
-    }
-
-    // Shadow
-    g.fillStyle(0x000000, 0.3);
-    g.fillEllipse(x, y + 18, 70, 16);
-
-    // Chest body
-    g.fillStyle(0x5a3010);
-    g.fillRect(x - 30, y - 15, 60, 35);
-    // Body iron bands
-    g.fillStyle(0x888866);
-    g.fillRect(x - 30, y - 5, 60, 6);
-    g.fillRect(x - 30, y + 8, 60, 4);
-    g.lineStyle(1, 0x555544, 1);
-    g.strokeRect(x - 30, y - 5, 60, 6);
-    g.strokeRect(x - 30, y + 8, 60, 4);
-    // Body corners
-    g.fillStyle(0x777755);
-    g.fillRect(x - 32, y - 16, 7, 52);
-    g.fillRect(x + 25, y - 16, 7, 52);
-    g.lineStyle(1, 0x555533, 1);
-    g.strokeRect(x - 32, y - 16, 7, 52);
-    g.strokeRect(x + 25, y - 16, 7, 52);
-    // Body outline
-    g.lineStyle(2, 0x2a1a08, 1);
-    g.strokeRect(x - 30, y - 15, 60, 35);
-
-    // Lid (rotates open)
-    // Draw lid using a polygon/trapezoid effect
-    const lidH = 16;
-    const lidOpenY = y - 15 - lidH * Math.sin(lidAngle * Math.PI / 180);
-    const lidOpenDepth = lidH * Math.cos(lidAngle * Math.PI / 180);
-    g.fillStyle(0x6b3a12);
-    if (lidOpenDepth > 0) {
-      g.fillRect(x - 30, lidOpenY, 60, lidOpenDepth);
-    }
-    // Lid metal band
-    g.fillStyle(0x888866);
-    g.fillRect(x - 30, lidOpenY, 60, 4);
-    // Lid corners
-    g.fillStyle(0x777755);
-    g.fillRect(x - 32, lidOpenY, 7, lidOpenDepth + 2);
-    g.fillRect(x + 25, lidOpenY, 7, lidOpenDepth + 2);
-    // Lid outline
-    g.lineStyle(2, 0x2a1a08, 1);
-    if (lidOpenDepth > 0) {
-      g.strokeRect(x - 30, lidOpenY, 60, lidOpenDepth);
-    }
-
-    // Lock / keyhole
-    if (!this.isOpen) {
-      g.fillStyle(0xcc9900);
-      g.fillRect(x - 8, y - 4, 16, 14);
-      g.lineStyle(1, 0x886600, 1);
-      g.strokeRect(x - 8, y - 4, 16, 14);
-      g.fillStyle(0x111100);
-      g.fillCircle(x, y + 3, 4);
-      g.fillRect(x - 2, y + 3, 4, 6);
-    }
-
-    // Inner glow when open
-    if (this.isOpen && this.openAnim > 0.3) {
-      g.fillStyle(0xffdd00, 0.3 * this.openAnim);
-      g.fillRect(x - 26, y - 12, 52, 30);
-      // Coins visible
-      g.fillStyle(0xffcc00);
-      g.fillCircle(x - 12, y + 8, 6);
-      g.fillCircle(x + 5, y + 10, 5);
-      g.fillCircle(x - 4, y + 4, 4);
-      g.fillStyle(0xffee88);
-      g.fillCircle(x - 12, y + 8, 3);
-      g.fillCircle(x + 5, y + 10, 2.5);
-    }
-
-    // Label
-    g.fillStyle(0x000000, 0);
-    this.scene.add.text(x, y + 26, '⚜ Tesoro', {
-      fontFamily: '"Press Start 2P"',
-      fontSize: '5px',
-      color: '#8b6914',
-    }).setOrigin(0.5, 0).setDepth(5);
-  }
-
   private drawParticles(): void {
-    const g = this.gfx;
+    const g = this.particleGfx;
+    g.clear();
     for (const p of this.particles) {
       g.fillStyle(p.color, p.life);
       g.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);

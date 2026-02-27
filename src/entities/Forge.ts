@@ -32,8 +32,8 @@ export class ForgeSmith {
 
   private drawStatic(): void {
     const { x, y } = this;
-    const g = this.scene.add.graphics().setDepth(2);
-    this.staticGfx = g;
+    this.staticGfx = this.scene.add.graphics().setDepth(2);
+    const g = this.staticGfx;
 
     // === FRAGUA (Forge/Furnace) — left side ===
     // Base block
@@ -41,7 +41,7 @@ export class ForgeSmith {
     g.fillRect(x - 90, y - 60, 70, 70);
     g.lineStyle(2, 0x111111, 1);
     g.strokeRect(x - 90, y - 60, 70, 70);
-    // Brick texture on fragua
+    // Brick texture
     g.lineStyle(1, 0x1a1a1a, 0.8);
     for (let row = 0; row < 4; row++) {
       for (let col = 0; col < 3; col++) {
@@ -50,17 +50,17 @@ export class ForgeSmith {
         g.strokeRect(bx, by, 24, 17);
       }
     }
-    // Furnace opening (dark hole with glow)
+    // Furnace opening
     g.fillStyle(0x0a0000);
     g.fillRect(x - 82, y - 16, 50, 28);
     g.lineStyle(2, 0x333333, 1);
     g.strokeRect(x - 82, y - 16, 50, 28);
-    // Grate bars on furnace
+    // Grate bars
     g.lineStyle(3, 0x333333, 1);
     for (let i = 0; i < 4; i++) {
       g.lineBetween(x - 82 + 8 + i * 11, y - 16, x - 82 + 8 + i * 11, y + 12);
     }
-    // Furnace top chimney
+    // Furnace chimney
     g.fillStyle(0x222222);
     g.fillRect(x - 80, y - 75, 30, 20);
     g.fillRect(x - 74, y - 88, 18, 18);
@@ -68,30 +68,18 @@ export class ForgeSmith {
     g.strokeRect(x - 80, y - 75, 30, 20);
     g.strokeRect(x - 74, y - 88, 18, 18);
 
-    // === YUNQUE (Anvil) ===
+    // === YUNQUE (Anvil) — sprite real de Gemini ===
     const ax = x + 10;
     const ay = y - 8;
-    // Shadow
-    g.fillStyle(0x000000, 0.3);
+    // Sombra
+    g.fillStyle(0x000000, 0.28);
     g.fillEllipse(ax, ay + 28, 70, 16);
-    // Anvil base
-    g.fillStyle(0x2a2a2a);
-    g.fillRect(ax - 18, ay + 12, 36, 18);
-    // Anvil body
-    g.fillStyle(0x383838);
-    g.fillRect(ax - 28, ay - 2, 56, 16);
-    // Anvil top (horn side)
-    g.fillStyle(0x444444);
-    g.fillRect(ax - 24, ay - 16, 48, 16);
-    // Horn
-    g.fillStyle(0x3a3a3a);
-    g.fillTriangle(ax - 24, ay - 16, ax - 24, ay, ax - 44, ay - 8);
-    // Anvil face/ridge
-    g.lineStyle(1, 0x555555, 1);
-    g.lineBetween(ax - 22, ay - 14, ax + 22, ay - 14);
-    // Anvil highlight (top edge)
-    g.lineStyle(2, 0x666666, 0.8);
-    g.lineBetween(ax - 22, ay - 16, ax + 22, ay - 16);
+
+    // Sprite real
+    const anvilImg = this.scene.add.image(ax, ay, 'anvil');
+    anvilImg.setDisplaySize(80, 70);
+    anvilImg.setOrigin(0.5, 1);
+    anvilImg.setDepth(3);
 
     // Label
     this.scene.add.text(x - 20, y + 16, '⚒ Herrería', {
