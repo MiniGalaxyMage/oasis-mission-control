@@ -1,0 +1,209 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/MiniGalaxyMage/oasis-mission-control/blob/main/data/snapshot.schema.json",
+  "title": "OasisSnapshot",
+  "description": "Schema del snapshot de estado del swarm de agentes de Oasis Mission Control",
+  "type": "object",
+  "required": ["timestamp", "heartbeat", "agents", "tasks", "pullRequests", "stats"],
+  "additionalProperties": false,
+  "properties": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Momento en que se generó el snapshot (ISO 8601)"
+    },
+    "heartbeat": {
+      "type": "object",
+      "description": "Estado del heartbeat de Percival",
+      "required": ["lastCheck", "status", "minutesAgo"],
+      "additionalProperties": false,
+      "properties": {
+        "lastCheck": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Último check del heartbeat (ISO 8601)"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["ok", "warning", "error"],
+          "description": "Estado del heartbeat: ok (<60min), warning (<180min), error (>180min)"
+        },
+        "minutesAgo": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Minutos desde el último heartbeat"
+        }
+      }
+    },
+    "agents": {
+      "type": "array",
+      "description": "Lista de agentes del swarm",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "status", "currentTask", "model", "startedAt"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Identificador único del agente (ej: percival, forge-alpha)"
+          },
+          "name": {
+            "type": "string",
+            "description": "Nombre de display del agente"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["idle", "working", "error", "done"],
+            "description": "Estado actual del agente"
+          },
+          "currentTask": {
+            "type": ["string", "null"],
+            "description": "Branch name de la tarea actual, o null si está idle"
+          },
+          "model": {
+            "type": "string",
+            "enum": ["opus", "sonnet", "haiku"],
+            "description": "Modelo de Claude utilizado por el agente"
+          },
+          "startedAt": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "Timestamp de inicio de la tarea actual (ISO 8601), o null"
+          }
+        }
+      }
+    },
+    "tasks": {
+      "type": "array",
+      "description": "Lista de tareas activas del swarm",
+      "items": {
+        "type": "object",
+        "required": ["id", "branch", "title", "agent", "status", "repo", "retries"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Identificador único de la tarea"
+          },
+          "branch": {
+            "type": "string",
+            "description": "Nombre de la rama git de la tarea"
+          },
+          "title": {
+            "type": "string",
+            "description": "Título descriptivo de la tarea"
+          },
+          "agent": {
+            "type": "string",
+            "description": "ID del agente asignado"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["queued", "in-progress", "pr-open", "completed", "failed"],
+            "description": "Estado actual de la tarea"
+          },
+          "repo": {
+            "type": "string",
+            "description": "Nombre del repositorio (sin owner)"
+          },
+          "retries": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Número de reintentos realizados"
+          }
+        }
+      }
+    },
+    "pullRequests": {
+      "type": "array",
+      "description": "Lista de Pull Requests de los repos monitorizados",
+      "items": {
+        "type": "object",
+        "required": ["number", "title", "repo", "url", "status", "ci", "reviews", "author", "createdAt"],
+        "additionalProperties": false,
+        "properties": {
+          "number": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Número de PR en GitHub"
+          },
+          "title": {
+            "type": "string",
+            "description": "Título del Pull Request"
+          },
+          "repo": {
+            "type": "string",
+            "description": "Nombre del repositorio (sin owner)"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL del Pull Request en GitHub"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["open", "merged", "closed"],
+            "description": "Estado del PR"
+          },
+          "ci": {
+            "type": "string",
+            "enum": ["pending", "passing", "failing", "none"],
+            "description": "Estado de los checks de CI"
+          },
+          "reviews": {
+            "type": "string",
+            "enum": ["pending", "approved", "changes-requested", "none"],
+            "description": "Estado de las revisiones del PR"
+          },
+          "author": {
+            "type": "string",
+            "description": "Username de GitHub del autor del PR"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp de creación del PR (ISO 8601)"
+          }
+        }
+      }
+    },
+    "stats": {
+      "type": "object",
+      "description": "Estadísticas agregadas del swarm",
+      "required": ["prsToday", "prsThisWeek", "tasksCompleted", "tasksInProgress", "agentsActive", "lastDeployAt"],
+      "additionalProperties": false,
+      "properties": {
+        "prsToday": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "PRs creados hoy"
+        },
+        "prsThisWeek": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "PRs creados esta semana"
+        },
+        "tasksCompleted": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total de tareas completadas"
+        },
+        "tasksInProgress": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Tareas actualmente en progreso"
+        },
+        "agentsActive": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Número de agentes actualmente trabajando"
+        },
+        "lastDeployAt": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "Timestamp del último deploy, o null si no hay"
+        }
+      }
+    }
+  }
+}

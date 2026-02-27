@@ -1,0 +1,23 @@
+{
+  "name": "oasis-snapshot-generator",
+  "version": "1.0.0",
+  "description": "Generador de snapshot JSON para Oasis Mission Control",
+  "main": "dist/index.js",
+  "scripts": {
+    "generate": "ts-node src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "keywords": ["oasis", "mission-control", "snapshot"],
+  "author": "Parzival",
+  "license": "MIT",
+  "dependencies": {
+    "minimist": "^1.2.8"
+  },
+  "devDependencies": {
+    "@types/minimist": "^1.2.5",
+    "@types/node": "^20.11.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  }
+}
