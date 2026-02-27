@@ -1,0 +1,56 @@
+.task-board {
+  flex-shrink: 0;
+}
+
+.task-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.task-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 3px 0;
+  border-bottom: 1px solid #222;
+}
+
+.task-item:last-child {
+  border-bottom: none;
+}
+
+.task-status-icon {
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+.task-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.task-branch {
+  color: #00bcd4;
+  font-size: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-agent {
+  color: #888;
+  font-size: 5px;
+}
+
+.empty-msg {
+  color: #555;
+  font-size: 6px;
+  text-align: center;
+  margin: 4px 0;
+}
