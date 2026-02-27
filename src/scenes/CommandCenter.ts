@@ -4,6 +4,9 @@ import { Agent } from '../entities/Agent';
 import { TaskBoard } from '../entities/TaskBoard';
 import { PRMonitor } from '../entities/PRMonitor';
 import { HeartbeatPulse } from '../entities/HeartbeatPulse';
+import { CastleRoom } from '../entities/CastleRoom';
+import { ForgeSmith } from '../entities/Forge';
+import { TreasureChest } from '../entities/TreasureChest';
 
 // Konami code sequence
 const KONAMI = [
@@ -15,35 +18,34 @@ const KONAMI = [
 export class CommandCenter extends Phaser.Scene {
   private snapshot: SnapshotData | null = null;
   private agentSprites: Map<string, Agent> = new Map();
-  private taskBoard!: TaskBoard;
-  private prMonitor!: PRMonitor;
-  private heartbeat!: HeartbeatPulse;
-  private titleText!: Phaser.GameObjects.Text;
-  private statsText!: Phaser.GameObjects.Text;
+  private taskBoard: TaskBoard | null = null;
+  private prMonitor: PRMonitor | null = null;
+  private heartbeat: HeartbeatPulse | null = null;
+  private castleRoom: CastleRoom | null = null;
+  private forgeSmith: ForgeSmith | null = null;
+  private treasureChest: TreasureChest | null = null;
   private refreshTimer = 0;
   private readonly REFRESH_INTERVAL = 30000;
-  private stars: Array<{ x: number; y: number; s: number; t: number }> = [];
-  private starGraphics!: Phaser.GameObjects.Graphics;
-  private dividers: Phaser.GameObjects.Graphics[] = [];
   private konamiBuffer: string[] = [];
   private konamiMsg: Phaser.GameObjects.Text | null = null;
+  private titleText: Phaser.GameObjects.Text | null = null;
+  private clockText: Phaser.GameObjects.Text | null = null;
 
   constructor() {
     super({ key: 'CommandCenter' });
   }
 
   preload(): void {
-    // No external assets — everything drawn programmatically
+    // Everything drawn programmatically — no external assets
   }
 
   create(): void {
-    this.buildStarfield();
     this.loadSnapshot().then(snap => {
       this.snapshot = snap;
-      this.buildUI();
+      this.buildCastleScene();
     });
 
-    // Keyboard easter egg: Konami
+    // Konami Easter Egg
     this.input.keyboard!.on('keydown', (e: KeyboardEvent) => {
       this.konamiBuffer.push(e.code);
       if (this.konamiBuffer.length > KONAMI.length) this.konamiBuffer.shift();
@@ -52,23 +54,21 @@ export class CommandCenter extends Phaser.Scene {
       }
     });
 
-    // Scale listener
-    this.scale.on('resize', this.onResize, this);
-  }
+    // Torch easter egg: click any torch area
+    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      if (!this.castleRoom) return;
+      const { torch1X, torch2X, torchY } = this.castleRoom.layout;
+      for (const tx of [torch1X, torch2X]) {
+        if (Math.abs(pointer.x - tx) < 20 && Math.abs(pointer.y - torchY) < 30) {
+          this.torchEasterEgg(tx, torchY);
+        }
+      }
+    });
 
-  private buildStarfield(): void {
-    this.starGraphics = this.add.graphics();
-    const W = this.scale.width;
-    const H = this.scale.height;
-
-    for (let i = 0; i < 120; i++) {
-      this.stars.push({
-        x: Phaser.Math.Between(0, W),
-        y: Phaser.Math.Between(0, H),
-        s: Phaser.Math.Between(1, 3),
-        t: Math.random() * Math.PI * 2,
-      });
-    }
+    // Scale / resize
+    this.scale.on('resize', () => {
+      this.scene.restart();
+    });
   }
 
   private async loadSnapshot(): Promise<SnapshotData> {
@@ -77,7 +77,6 @@ export class CommandCenter extends Phaser.Scene {
       return await res.json() as SnapshotData;
     } catch (e) {
       console.warn('Failed to load snapshot.json', e);
-      // Return minimal fallback
       return {
         timestamp: new Date().toISOString(),
         heartbeat: { lastCheck: new Date().toISOString(), status: 'warn' },
@@ -89,126 +88,187 @@ export class CommandCenter extends Phaser.Scene {
     }
   }
 
-  private buildUI(): void {
+  private buildCastleScene(): void {
     if (!this.snapshot) return;
     const W = this.scale.width;
     const H = this.scale.height;
 
-    // Header bar
-    const header = this.add.graphics();
-    header.fillStyle(0x111133, 1);
-    header.fillRect(0, 0, W, 36);
-    header.lineStyle(1, 0x4466ff, 0.6);
-    header.lineBetween(0, 36, W, 36);
+    // === CASTLE ROOM BACKGROUND ===
+    this.castleRoom = new CastleRoom(this);
+    const layout = this.castleRoom.layout;
+
+    // === FORGE / SMITHY ===
+    this.forgeSmith = new ForgeSmith(this, layout.smithyX, layout.smithyY);
+
+    // === TASK BOARD (quest board on right wall) ===
+    const tbW = Math.floor(W * 0.28);
+    const tbH = Math.floor((layout.floorY - layout.wallTopY) * 0.72);
+    this.taskBoard = new TaskBoard(
+      this,
+      layout.questBoardX,
+      layout.questBoardY,
+      tbW,
+      tbH,
+    );
+    this.taskBoard.updateTasks(this.snapshot.tasks);
+
+    // === PR MONITOR (scrolls on left wall) ===
+    const prW = Math.floor(W * 0.28);
+    const prH = Math.floor((layout.floorY - layout.wallTopY) * 0.72);
+    this.prMonitor = new PRMonitor(
+      this,
+      layout.scrollsX,
+      layout.scrollsY,
+      prW,
+      prH,
+    );
+    this.prMonitor.updatePRs(this.snapshot.pullRequests);
+
+    // === HEARTBEAT CRYSTAL ===
+    this.heartbeat = new HeartbeatPulse(this, layout.gemX, layout.gemY, this.snapshot.heartbeat);
+    this.heartbeat.setDepth(6);
+
+    // === TREASURE CHEST ===
+    this.treasureChest = new TreasureChest(this, layout.chestX, layout.chestY);
+    const hasMerged = this.snapshot.pullRequests.some(pr => pr.status === 'merged');
+    this.treasureChest.setHasMergedPRs(hasMerged);
+
+    // === AGENTS ===
+    this.buildAgents();
+
+    // === HUD ===
+    this.buildHUD(W, H);
+  }
+
+  private buildAgents(): void {
+    if (!this.snapshot || !this.castleRoom) return;
+    const layout = this.castleRoom.layout;
+    const { W, H, floorY } = layout;
+    const floorCenterY = Math.floor(floorY + (H - floorY) * 0.55);
+
+    this.snapshot.agents.forEach((agentData) => {
+      const isPercival = agentData.id === 'percival';
+      // Initial position
+      const startX = isPercival ? Math.floor(W * 0.5) : Math.floor(W * 0.3);
+      const startY = floorCenterY;
+
+      const agent = new Agent(this, startX, startY, agentData);
+      agent.setDepth(7);
+      this.add.existing(agent);
+      this.agentSprites.set(agentData.id, agent);
+
+      if (isPercival) {
+        // Percival wanders around the strategy table area
+        const wanderPoints = [
+          { x: layout.tableX - 80, y: floorCenterY },
+          { x: layout.tableX, y: floorCenterY - 10 },
+          { x: layout.tableX + 80, y: floorCenterY },
+          { x: layout.tableX + 40, y: Math.floor(floorY + (H - floorY) * 0.75) },
+          { x: Math.floor(W * 0.55), y: Math.floor(floorY + (H - floorY) * 0.85) },
+        ];
+        agent.setIdleWaypoints(wanderPoints);
+
+        // If orchestrating/thinking → go to strategy table
+        if (agentData.status === 'orchestrating' || agentData.status === 'thinking') {
+          agent.setTaskTarget({ x: layout.tableX, y: floorCenterY });
+        }
+      } else {
+        // Forge agents wander in their zone
+        const forgeWander = [
+          { x: Math.floor(W * 0.25), y: floorCenterY },
+          { x: Math.floor(W * 0.35), y: floorCenterY },
+          { x: Math.floor(W * 0.3), y: Math.floor(floorY + (H - floorY) * 0.8) },
+          { x: Math.floor(W * 0.4), y: Math.floor(floorY + (H - floorY) * 0.75) },
+        ];
+        // Offset multiple forge agents so they don't stack
+        const forgeIndex = [...this.agentSprites.keys()].filter(k => k !== 'percival').indexOf(agentData.id);
+        const offsetX = forgeIndex * 60;
+        agent.setIdleWaypoints(forgeWander.map(wp => ({ x: wp.x + offsetX, y: wp.y })));
+
+        // If working → go to anvil
+        if (agentData.status === 'working') {
+          const anvX = layout.smithyX + 10 + forgeIndex * 20;
+          agent.setTaskTarget({ x: anvX, y: layout.smithyY - 10 });
+          if (this.forgeSmith) this.forgeSmith.setActive(true);
+        }
+      }
+    });
+  }
+
+  private buildHUD(W: number, H: number): void {
+    if (!this.snapshot) return;
+    // Top bar
+    const bar = this.add.graphics().setDepth(20);
+    bar.fillStyle(0x0a0808, 0.85);
+    bar.fillRect(0, 0, W, 30);
+    bar.lineStyle(1, 0x6b3a18, 0.8);
+    bar.lineBetween(0, 30, W, 30);
 
     // Title
-    this.titleText = this.add.text(14, 10, '🎮 OASIS MISSION CONTROL', {
+    this.titleText = this.add.text(14, 15, '⚔  OASIS MISSION CONTROL  ⚔', {
       fontFamily: '"Press Start 2P"',
-      fontSize: '10px',
-      color: '#00ccff',
-    });
+      fontSize: '8px',
+      color: '#cc8822',
+      stroke: '#000000',
+      strokeThickness: 2,
+    }).setOrigin(0, 0.5).setDepth(21);
     this.titleText.setInteractive({ useHandCursor: true });
-    this.titleText.on('pointerup', () => this.triggerGlitch());
+    this.titleText.on('pointerdown', () => this.triggerGlitch());
 
-    // Heartbeat (top right)
-    const hb = this.snapshot.heartbeat;
-    this.heartbeat = new HeartbeatPulse(this, W - 120, 18, hb);
-    this.heartbeat.setDepth(10);
+    // Clock
+    this.clockText = this.add.text(W - 14, 15, '', {
+      fontFamily: '"Press Start 2P"',
+      fontSize: '7px',
+      color: '#887744',
+      stroke: '#000000',
+      strokeThickness: 2,
+    }).setOrigin(1, 0.5).setDepth(21);
 
-    // Agent section
-    this.buildAgentSection(W, H);
+    // Bottom status bar
+    const botBar = this.add.graphics().setDepth(20);
+    botBar.fillStyle(0x0a0808, 0.85);
+    botBar.fillRect(0, H - 24, W, 24);
+    botBar.lineStyle(1, 0x6b3a18, 0.8);
+    botBar.lineBetween(0, H - 24, W, H - 24);
 
-    // Panels (task board + PR monitor)
-    this.buildPanels(W, H);
+    const s = this.snapshot.stats;
+    const statsLine = `⚜ ${s.agentsActive} agentes  |  ✓ ${s.tasksCompleted} tareas  |  PR ${s.prsToday} hoy`;
+    this.add.text(W / 2, H - 12, statsLine, {
+      fontFamily: '"Press Start 2P"',
+      fontSize: '5px',
+      color: '#887744',
+    }).setOrigin(0.5, 0.5).setDepth(21);
 
-    // Stats bar
-    this.buildStatsBar(W, H);
+    // Last updated
+    const ts = new Date(this.snapshot.timestamp).toLocaleTimeString('es-ES');
+    this.add.text(W - 12, H - 12, `↺ ${ts}`, {
+      fontFamily: '"Press Start 2P"',
+      fontSize: '4px',
+      color: '#665533',
+    }).setOrigin(1, 0.5).setDepth(21);
   }
 
-  private buildAgentSection(W: number, H: number): void {
-    if (!this.snapshot) return;
-    const agents = this.snapshot.agents;
+  update(_time: number, delta: number): void {
+    // Torches
+    if (this.castleRoom) this.castleRoom.updateTorches(delta);
 
-    // Section header
-    const agentY = 50;
-    const divider = this.add.graphics();
-    divider.lineStyle(1, 0x333366, 0.7);
-    divider.lineBetween(0, agentY, W, agentY);
-    this.dividers.push(divider);
+    // Forge fire
+    if (this.forgeSmith) this.forgeSmith.update(delta);
 
-    const cardW = 100;
-    const totalW = agents.length * (cardW + 16) - 16;
-    const startX = (W - totalW) / 2 + cardW / 2;
-    const agentCenterY = agentY + 90;
+    // Agents
+    this.agentSprites.forEach(agent => agent.update(delta));
 
-    agents.forEach((agentData, i) => {
-      const ax = startX + i * (cardW + 16);
-      const sprite = new Agent(this, ax, agentCenterY, agentData);
-      sprite.setDepth(5);
-      this.agentSprites.set(agentData.id, sprite);
-    });
-  }
-
-  private buildPanels(W: number, H: number): void {
-    if (!this.snapshot) return;
-    const panelTop = 230;
-    const panelH = Math.floor((H - panelTop - 40) / 2);
-    const panelW = W - 20;
-
-    // Task board
-    this.taskBoard = new TaskBoard(this, 10, panelTop, panelW, panelH);
-    this.taskBoard.updateTasks(this.snapshot.tasks);
-    this.taskBoard.setDepth(5);
-
-    // PR Monitor
-    const prTop = panelTop + panelH + 8;
-    this.prMonitor = new PRMonitor(this, 10, prTop, panelW, panelH);
-    this.prMonitor.updatePRs(this.snapshot.pullRequests);
-    this.prMonitor.setDepth(5);
-  }
-
-  private buildStatsBar(W: number, H: number): void {
-    if (!this.snapshot) return;
-    const stats = this.snapshot.stats;
-    const barY = H - 28;
-
-    const bar = this.add.graphics();
-    bar.fillStyle(0x111133, 1);
-    bar.fillRect(0, barY, W, 28);
-    bar.lineStyle(1, 0x333366, 0.7);
-    bar.lineBetween(0, barY, W, barY);
-
-    this.statsText = this.add.text(14, barY + 8, 
-      `📊 STATS: ${stats.prsToday} PRs hoy | ${stats.tasksCompleted} tareas completadas | ${stats.agentsActive} agentes activos`,
-      {
-        fontFamily: '"Press Start 2P"',
-        fontSize: '6px',
-        color: '#888888',
-      });
-  }
-
-  private onResize(_gameSize: Phaser.Structs.Size): void {
-    // Rebuild everything on resize
-    this.cameras.main.setSize(this.scale.width, this.scale.height);
-    this.scene.restart();
-  }
-
-  update(time: number, delta: number): void {
-    // Animate stars
-    this.starGraphics.clear();
-    this.stars.forEach(star => {
-      star.t += delta * 0.001;
-      const alpha = 0.4 + 0.6 * Math.abs(Math.sin(star.t));
-      const color = [0x4444aa, 0x224488, 0x446688][star.s % 3];
-      this.starGraphics.fillStyle(color, alpha);
-      this.starGraphics.fillRect(star.x, star.y, star.s, star.s);
-    });
-
-    // Update agents
-    this.agentSprites.forEach(sprite => sprite.update(delta));
-
-    // Heartbeat
+    // Heartbeat crystal
     if (this.heartbeat) this.heartbeat.update(delta);
+
+    // Treasure chest
+    if (this.treasureChest) this.treasureChest.update(delta);
+
+    // Clock
+    if (this.clockText) {
+      const now = new Date();
+      this.clockText.setText(now.toLocaleTimeString('es-ES'));
+    }
 
     // Auto-refresh
     this.refreshTimer += delta;
@@ -222,43 +282,57 @@ export class CommandCenter extends Phaser.Scene {
     const snap = await this.loadSnapshot();
     this.snapshot = snap;
 
-    // Update agents
     snap.agents.forEach(agentData => {
       const sprite = this.agentSprites.get(agentData.id);
       if (sprite) {
         sprite.updateData(agentData);
+        // Reposition to task if status changed
+        if (!this.castleRoom) return;
+        const layout = this.castleRoom.layout;
+        const { W, H, floorY } = layout;
+        const floorCenterY = Math.floor(floorY + (H - floorY) * 0.55);
+        if (agentData.id === 'percival') {
+          if (agentData.status === 'orchestrating' || agentData.status === 'thinking') {
+            sprite.setTaskTarget({ x: layout.tableX, y: floorCenterY });
+          }
+        } else {
+          if (agentData.status === 'working') {
+            sprite.setTaskTarget({ x: layout.smithyX + 10, y: layout.smithyY - 10 });
+            if (this.forgeSmith) this.forgeSmith.setActive(true);
+          } else {
+            if (this.forgeSmith) this.forgeSmith.setActive(false);
+          }
+        }
       }
     });
 
-    // Update panels
     if (this.taskBoard) this.taskBoard.updateTasks(snap.tasks);
     if (this.prMonitor) this.prMonitor.updatePRs(snap.pullRequests);
     if (this.heartbeat) this.heartbeat.updateData(snap.heartbeat);
-    if (this.statsText) {
-      const s = snap.stats;
-      this.statsText.setText(
-        `📊 STATS: ${s.prsToday} PRs hoy | ${s.tasksCompleted} tareas completadas | ${s.agentsActive} agentes activos`
-      );
+    if (this.treasureChest) {
+      const hasMerged = snap.pullRequests.some(pr => pr.status === 'merged');
+      this.treasureChest.setHasMergedPRs(hasMerged);
     }
   }
 
   // Easter egg 1: Konami code
   private triggerKonami(): void {
     if (this.konamiMsg) return;
+    const W = this.scale.width;
+    const H = this.scale.height;
     this.konamiMsg = this.add.text(
-      this.scale.width / 2, this.scale.height / 2,
+      W / 2, H / 2,
       '> Going outside is highly overrated <',
       {
         fontFamily: '"Press Start 2P"',
         fontSize: '10px',
         color: '#00ff88',
         backgroundColor: '#000000',
-        padding: { x: 16, y: 10 },
+        padding: { x: 20, y: 12 },
         align: 'center',
       }
     ).setOrigin(0.5).setDepth(500);
 
-    // Matrix rain effect
     this.spawnMatrixRain();
 
     this.time.delayedCall(4000, () => {
@@ -276,20 +350,31 @@ export class CommandCenter extends Phaser.Scene {
     });
   }
 
-  // Easter egg 2: Title glitch
-  private triggerGlitch(): void {
-    const container = document.getElementById('game-container');
-    if (container) {
-      container.parentElement?.classList.add('glitch-active');
-      setTimeout(() => container.parentElement?.classList.remove('glitch-active'), 600);
-    }
+  // Easter egg 2: Torch color change on click
+  private torchEasterEgg(tx: number, ty: number): void {
+    const g = this.add.graphics().setDepth(10);
+    const colors = [0xff00ff, 0x00ffff, 0x00ff00, 0xffffff];
+    let ci = 0;
+    const timer = this.time.addEvent({
+      delay: 100,
+      repeat: 8,
+      callback: () => {
+        g.clear();
+        g.fillStyle(colors[ci % colors.length], 0.3);
+        g.fillCircle(tx, ty - 20, 25);
+        ci++;
+      },
+    });
+    this.time.delayedCall(1000, () => { timer.destroy(); g.destroy(); });
+  }
 
-    // Also glitch the title text
-    const originalText = '🎮 OASIS MISSION CONTROL';
+  // Easter egg 3: Title glitch
+  private triggerGlitch(): void {
+    const originalText = '⚔  OASIS MISSION CONTROL  ⚔';
     const glitchChars = '!@#$%^&*<>?/|\\{}[]';
     let count = 0;
     const interval = setInterval(() => {
-      if (count++ >= 8) {
+      if (count++ >= 10 || !this.titleText) {
         clearInterval(interval);
         if (this.titleText) this.titleText.setText(originalText);
         return;
@@ -301,21 +386,20 @@ export class CommandCenter extends Phaser.Scene {
     }, 60);
   }
 
-  // Matrix-style character rain
+  // Matrix rain
   private spawnMatrixRain(): void {
     const W = this.scale.width;
     const H = this.scale.height;
     const cols = Math.floor(W / 12);
     const drops: number[] = new Array(cols).fill(0).map(() => Phaser.Math.Between(-H, 0));
-    const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ@#$%&';
-
+    const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ@#$%&⚔⚒⚜♥';
     const g = this.add.graphics().setDepth(490);
     const style: Phaser.Types.GameObjects.Text.TextStyle = {
       fontFamily: 'monospace',
       fontSize: '11px',
       color: '#00ff88',
     };
-    const textObjects: Phaser.GameObjects.Text[] = [];
+    const texts: Phaser.GameObjects.Text[] = [];
 
     const timer = this.time.addEvent({
       delay: 60,
@@ -323,23 +407,17 @@ export class CommandCenter extends Phaser.Scene {
         g.clear();
         g.fillStyle(0x000000, 0.05);
         g.fillRect(0, 0, W, H);
-
         drops.forEach((y, i) => {
           const char = chars[Math.floor(Math.random() * chars.length)];
           const txt = this.add.text(i * 12, y, char, style).setDepth(495);
-          textObjects.push(txt);
+          texts.push(txt);
           this.time.delayedCall(200, () => txt.destroy());
-
           drops[i] += 14;
           if (drops[i] > H && Math.random() > 0.975) drops[i] = 0;
         });
       },
-      repeat: 50,
+      repeat: 55,
     });
-
-    this.time.delayedCall(3500, () => {
-      timer.destroy();
-      g.destroy();
-    });
+    this.time.delayedCall(3600, () => { timer.destroy(); g.destroy(); });
   }
 }
