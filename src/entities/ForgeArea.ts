@@ -42,7 +42,7 @@ export class ForgeArea {
     // Yunque (imagen)
     if (this.scene.textures.exists('anvil')) {
       const anvil = this.scene.add.image(130, 488, 'anvil');
-      anvil.setScale(0.08);
+      anvil.setScale(0.14);
       anvil.setDepth(6);
     } else {
       // Fallback: rectángulo estilizado

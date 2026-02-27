@@ -1,0 +1,82 @@
+{
+  "timestamp": "2026-02-27T14:00:00Z",
+  "heartbeat": {
+    "lastCheck": "2026-02-27T13:58:00Z",
+    "status": "ok"
+  },
+  "agents": [
+    {
+      "id": "percival",
+      "name": "Percival",
+      "status": "orchestrating",
+      "currentTask": "Mission Control v1",
+      "model": "opus"
+    },
+    {
+      "id": "forge-alpha",
+      "name": "Forge Alpha",
+      "status": "idle",
+      "currentTask": null,
+      "model": "sonnet"
+    },
+    {
+      "id": "sprite",
+      "name": "Sprite",
+      "status": "idle",
+      "currentTask": null,
+      "model": "gemini"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "mc-005",
+      "branch": "feature/zelda-rewrite",
+      "title": "Zelda ALTTP Style Rewrite",
+      "agent": "forge-alpha",
+      "status": "done",
+      "repo": "oasis-mission-control"
+    },
+    {
+      "id": "mc-004",
+      "branch": "feature/castle-assets",
+      "title": "Gemini Pixel Art Assets",
+      "agent": "sprite",
+      "status": "done",
+      "repo": "oasis-mission-control"
+    }
+  ],
+  "pullRequests": [
+    {
+      "number": 7,
+      "title": "refactor: Zelda ALTTP rewrite",
+      "repo": "oasis-mission-control",
+      "url": "https://github.com/MiniGalaxyMage/oasis-mission-control/pull/7",
+      "status": "merged",
+      "ci": "passing",
+      "reviews": "approved"
+    },
+    {
+      "number": 6,
+      "title": "feat: integrar sprites Gemini",
+      "repo": "oasis-mission-control",
+      "url": "https://github.com/MiniGalaxyMage/oasis-mission-control/pull/6",
+      "status": "merged",
+      "ci": "passing",
+      "reviews": "approved"
+    },
+    {
+      "number": 5,
+      "title": "art: sprites pixel art Gemini",
+      "repo": "oasis-mission-control",
+      "url": "https://github.com/MiniGalaxyMage/oasis-mission-control/pull/5",
+      "status": "merged",
+      "ci": "passing",
+      "reviews": "approved"
+    }
+  ],
+  "stats": {
+    "prsToday": 7,
+    "tasksCompleted": 5,
+    "agentsActive": 1
+  }
+}

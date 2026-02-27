@@ -3,6 +3,7 @@ import { CommandCenter } from './scenes/CommandCenter';
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
+  parent: 'game-container',
   width: 800,
   height: 600,
   pixelArt: true,
@@ -14,4 +15,6 @@ const config: Phaser.Types.Core.GameConfig = {
   scene: [CommandCenter],
 };
 
-new Phaser.Game(config);
+console.log('[OASIS] Iniciando Phaser...');
+const game = new Phaser.Game(config);
+console.log('[OASIS] Phaser creado:', game);
