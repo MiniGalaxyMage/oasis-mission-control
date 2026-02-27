@@ -3,21 +3,15 @@ import { CommandCenter } from './scenes/CommandCenter';
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
-  width: window.innerWidth,
-  height: window.innerHeight,
-  parent: 'game-container',
-  backgroundColor: '#0a0a0f',
-  scene: [CommandCenter],
+  width: 800,
+  height: 600,
+  pixelArt: true,
   scale: {
-    mode: Phaser.Scale.RESIZE,
+    mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
-  render: {
-    pixelArt: true,
-    antialias: false,
-  },
+  backgroundColor: '#1a1a2e',
+  scene: [CommandCenter],
 };
 
-const game = new Phaser.Game(config);
-
-export default game;
+new Phaser.Game(config);
