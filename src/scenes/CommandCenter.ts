@@ -4,8 +4,8 @@ import { Agent } from '../entities/Agent';
 
 /**
  * CommandCenter — Escena principal OASIS Mission Control.
- * Fondo: castle-room-bg.png (Gemini pixel art isométrico).
- * Personajes: spritesheets con animación idle 4 frames.
+ * Canvas: 1200x800. Sala principal: 950px. Sidebar futuro: 250px derecha.
+ * Personajes: imágenes estáticas (sprites recortados del sheet original).
  */
 export class CommandCenter extends Phaser.Scene {
   private snapshot: SnapshotData | null = null;
@@ -32,25 +32,16 @@ export class CommandCenter extends Phaser.Scene {
   // PRELOAD
   // ─────────────────────────────────────────────────────────────
   preload(): void {
-    // Fondo de sala de castillo Zelda
+    // Fondo de sala
     this.load.image('castle-room-bg', '/assets/room/castle-room-bg.png');
 
-    // Spritesheets de personajes — todos 1024x1024, 4 frames en fila
-    this.load.spritesheet('percival-sheet', '/assets/sprites/percival-sheet.png', {
-      frameWidth: 256,
-      frameHeight: 256,
-    });
-    this.load.spritesheet('forge-sheet', '/assets/sprites/forge-sheet.png', {
-      frameWidth: 256,
-      frameHeight: 256,
-    });
-    this.load.spritesheet('sprite-sheet', '/assets/sprites/sprite-sheet.png', {
-      frameWidth: 256,
-      frameHeight: 256,
-    });
+    // Imágenes estáticas de personajes (recortadas del sheet 1024x1024)
+    this.load.image('percival-static', '/assets/sprites/percival-static.png');
+    this.load.image('forge-static', '/assets/sprites/forge-static.png');
+    this.load.image('sprite-static', '/assets/sprites/sprite-static.png');
 
     // Pantalla de carga
-    const loadText = this.add.text(400, 300, '⚔️  Cargando OASIS...', {
+    const loadText = this.add.text(600, 400, '⚔️  Cargando OASIS...', {
       fontSize: '12px',
       fontFamily: '"Press Start 2P", monospace',
       color: '#ffdd44',
@@ -58,14 +49,14 @@ export class CommandCenter extends Phaser.Scene {
 
     const progressBg = this.add.graphics();
     progressBg.fillStyle(0x1a1a2e);
-    progressBg.fillRect(250, 330, 300, 10);
+    progressBg.fillRect(350, 430, 300, 10);
 
     const progressBar = this.add.graphics();
 
     this.load.on('progress', (value: number) => {
       progressBar.clear();
       progressBar.fillStyle(0x4444cc);
-      progressBar.fillRect(250, 330, 300 * value, 10);
+      progressBar.fillRect(350, 430, 300 * value, 10);
     });
 
     this.load.on('complete', () => {
@@ -79,13 +70,26 @@ export class CommandCenter extends Phaser.Scene {
   // CREATE
   // ─────────────────────────────────────────────────────────────
   create(): void {
-    // 1. Fondo: imagen de Gemini escalada a 800x600
-    const bg = this.add.image(400, 300, 'castle-room-bg');
-    bg.setDisplaySize(800, 600);
+    // 1. Fondo: escalar para cubrir zona sala (950x800)
+    const bg = this.add.image(475, 400, 'castle-room-bg');
+    bg.setDisplaySize(950, 800);
     bg.setDepth(0);
 
-    // 2. Animaciones de personajes (definir una sola vez)
-    this.createAnimations();
+    // 2. Sidebar oscuro (placeholder menú futuro)
+    const sidebar = this.add.graphics();
+    sidebar.fillStyle(0x0d0d1a, 1);
+    sidebar.fillRect(950, 0, 250, 800);
+    sidebar.lineStyle(1, 0x2a2a4a, 1);
+    sidebar.lineBetween(950, 0, 950, 800);
+    sidebar.setDepth(1);
+
+    // Texto placeholder en sidebar
+    this.add.text(1075, 400, '[ PANEL\nFUTURO ]', {
+      fontSize: '8px',
+      fontFamily: '"Press Start 2P", monospace',
+      color: '#2a2a5a',
+      align: 'center',
+    }).setOrigin(0.5).setDepth(2);
 
     // 3. UI: título y timestamp
     this.createUI();
@@ -106,47 +110,24 @@ export class CommandCenter extends Phaser.Scene {
   }
 
   // ─────────────────────────────────────────────────────────────
-  // ANIMACIONES
-  // ─────────────────────────────────────────────────────────────
-  private createAnimations(): void {
-    // Idle animaciones — 4 frames, 2 FPS, loop
-    const defs = [
-      { key: 'percival-idle', sheet: 'percival-sheet' },
-      { key: 'forge-idle', sheet: 'forge-sheet' },
-      { key: 'sprite-idle', sheet: 'sprite-sheet' },
-    ];
-
-    for (const { key, sheet } of defs) {
-      if (!this.anims.exists(key)) {
-        this.anims.create({
-          key,
-          frames: this.anims.generateFrameNumbers(sheet, { start: 0, end: 3 }),
-          frameRate: 2,
-          repeat: -1,
-        });
-      }
-    }
-  }
-
-  // ─────────────────────────────────────────────────────────────
   // UI ESTÁTICA
   // ─────────────────────────────────────────────────────────────
   private createUI(): void {
     // Banda oscura superior para el título
     const titleBg = this.add.graphics();
-    titleBg.fillStyle(0x0a0a1a, 0.75);
-    titleBg.fillRect(0, 0, 800, 38);
+    titleBg.fillStyle(0x0a0a1a, 0.85);
+    titleBg.fillRect(0, 0, 1200, 40);
     titleBg.setDepth(18);
 
-    this.titleText = this.add.text(400, 10, '⚔️  OASIS MISSION CONTROL', {
-      fontSize: '11px',
+    this.titleText = this.add.text(475, 11, '⚔️  OASIS MISSION CONTROL', {
+      fontSize: '12px',
       fontFamily: '"Press Start 2P", monospace',
       color: '#ffdd44',
       stroke: '#000000',
       strokeThickness: 3,
     }).setOrigin(0.5, 0).setDepth(19);
 
-    this.timestampText = this.add.text(790, 594, '', {
+    this.timestampText = this.add.text(944, 796, '', {
       fontSize: '6px',
       fontFamily: '"Press Start 2P", monospace',
       color: '#aaaacc',
@@ -157,27 +138,27 @@ export class CommandCenter extends Phaser.Scene {
   // PANELES DE INFO
   // ─────────────────────────────────────────────────────────────
   private createInfoPanels(): void {
-    // Panel Tareas — esquina inf-izquierda
+    // Panel Tareas — esquina inf-izquierda (dentro de la sala)
     this.taskBg = this.add.graphics().setDepth(15);
-    this.taskText = this.add.text(10, 500, '', {
+    this.taskText = this.add.text(10, 650, '', {
       fontSize: '7px',
       fontFamily: '"Press Start 2P", monospace',
       color: '#ccffcc',
-      wordWrap: { width: 180 },
+      wordWrap: { width: 200 },
     }).setDepth(16);
 
-    // Panel PRs — esquina inf-derecha
+    // Panel PRs — esquina inf-derecha (dentro de la sala, antes del sidebar)
     this.prBg = this.add.graphics().setDepth(15);
-    this.prText = this.add.text(610, 460, '', {
+    this.prText = this.add.text(750, 610, '', {
       fontSize: '7px',
       fontFamily: '"Press Start 2P", monospace',
       color: '#ccccff',
-      wordWrap: { width: 180 },
+      wordWrap: { width: 190 },
     }).setDepth(16);
 
-    // Panel Heartbeat — banda inferior central
+    // Panel Heartbeat — banda inferior central (sala)
     this.heartbeatBg = this.add.graphics().setDepth(15);
-    this.heartbeatText = this.add.text(400, 572, '', {
+    this.heartbeatText = this.add.text(475, 778, '', {
       fontSize: '7px',
       fontFamily: '"Press Start 2P", monospace',
       color: '#ffeeaa',
@@ -188,7 +169,7 @@ export class CommandCenter extends Phaser.Scene {
     // — Tareas —
     const recentTasks = data.tasks.slice(0, 5);
     const taskLines = ['📋 TAREAS', '─────────────', ...recentTasks.map(t =>
-      `${t.status === 'done' ? '✓' : '○'} ${truncate(t.title ?? t.id, 22)}`
+      `${t.status === 'done' ? '✓' : '○'} ${truncate(t.title ?? t.id, 24)}`
     )];
     if (recentTasks.length === 0) taskLines.push('Sin tareas activas');
     const taskStr = taskLines.join('\n');
@@ -203,7 +184,7 @@ export class CommandCenter extends Phaser.Scene {
     // — PRs —
     const recentPRs = data.pullRequests.slice(0, 4);
     const prLines = ['🔀 PULL REQUESTS', '─────────────', ...recentPRs.map(pr =>
-      `#${pr.number ?? '?'} ${truncate(pr.title ?? '', 20)}`
+      `#${pr.number ?? '?'} ${truncate(pr.title ?? '', 22)}`
     )];
     if (recentPRs.length === 0) prLines.push('Sin PRs abiertos');
     this.prText.setText(prLines.join('\n'));
