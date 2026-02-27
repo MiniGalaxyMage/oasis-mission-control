@@ -1,0 +1,26 @@
+[
+  {
+    "id": "mc-001",
+    "branch": "feature/phaser-dashboard",
+    "title": "Phaser.js Dashboard con Command Center",
+    "agent": "forge-alpha",
+    "model": "sonnet",
+    "status": "in-progress",
+    "repo": "oasis-mission-control",
+    "startedAt": "2026-02-27T13:15:00Z",
+    "retries": 0,
+    "spec": "~/Documents/JIS/oasis-mission-control/001-phaser-dashboard.md"
+  },
+  {
+    "id": "mc-002",
+    "branch": "feature/snapshot-generator",
+    "title": "Snapshot JSON Generator",
+    "agent": "forge-beta",
+    "model": "sonnet",
+    "status": "in-progress",
+    "repo": "oasis-mission-control",
+    "startedAt": "2026-02-27T13:15:00Z",
+    "retries": 0,
+    "spec": "~/Documents/JIS/oasis-mission-control/002-snapshot-generator.md"
+  }
+]
