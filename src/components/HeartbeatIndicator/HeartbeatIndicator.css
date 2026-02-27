@@ -1,0 +1,59 @@
+.heartbeat-container {
+  flex-shrink: 0;
+}
+
+.heartbeat-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.heartbeat-icon {
+  font-size: 20px;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.heartbeat-ok {
+  filter: drop-shadow(0 0 6px #4caf50);
+}
+
+.heartbeat-warn {
+  filter: drop-shadow(0 0 6px #ff9800);
+}
+
+.heartbeat-error {
+  filter: drop-shadow(0 0 6px #f44336);
+  animation: shake 0.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.15); opacity: 0.8; }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+}
+
+.heartbeat-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.heartbeat-label {
+  font-size: 7px;
+  font-weight: bold;
+}
+
+.heartbeat-time {
+  font-size: 5px;
+  color: #666;
+}
+
+.heartbeat-unknown {
+  color: #555;
+  font-size: 6px;
+}
