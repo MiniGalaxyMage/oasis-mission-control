@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🎮 OASIS Mission Control</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #0a0a0f;
+    }
+
+    #game-container {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    canvas {
+      display: block;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+
+    /* CRT scanlines overlay */
+    #scanlines {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 100;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.05) 2px,
+        rgba(0, 0, 0, 0.05) 4px
+      );
+    }
+
+    /* Glitch effect */
+    @keyframes glitch {
+      0% { transform: translate(0); filter: none; }
+      10% { transform: translate(-3px, 2px); filter: hue-rotate(90deg) brightness(1.5); }
+      20% { transform: translate(3px, -2px); filter: hue-rotate(180deg); }
+      30% { transform: translate(-2px, 0); filter: none; }
+      40% { transform: translate(2px, 2px); filter: hue-rotate(270deg) brightness(0.8); }
+      50% { transform: translate(0); filter: none; }
+      100% { transform: translate(0); filter: none; }
+    }
+
+    .glitch-active canvas {
+      animation: glitch 0.5s ease-in-out;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container"></div>
+  <div id="scanlines"></div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
