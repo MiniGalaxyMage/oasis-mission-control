@@ -1,0 +1,18 @@
+{
+  "cellWidth": 126,
+  "cellHeight": 120,
+  "walk": {
+    "file": "sprite-walk.png",
+    "rows": [
+      "down",
+      "left",
+      "right",
+      "up"
+    ],
+    "framesPerRow": 4
+  },
+  "desk": {
+    "file": "sprite-desk.png",
+    "frames": 4
+  }
+}

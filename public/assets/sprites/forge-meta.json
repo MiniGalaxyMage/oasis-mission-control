@@ -1,0 +1,18 @@
+{
+  "cellWidth": 130,
+  "cellHeight": 152,
+  "walk": {
+    "file": "forge-walk.png",
+    "rows": [
+      "down",
+      "left",
+      "right",
+      "up"
+    ],
+    "framesPerRow": 4
+  },
+  "desk": {
+    "file": "forge-desk.png",
+    "frames": 4
+  }
+}
