@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { AgentStatusProvider, type AgentStatus as GwAgentStatus } from '../lib/gateway';
+import { ROOMS } from '../lib/rooms';
 
 // ─── Agent types ───────────────────────────────────────────────
 type AgentStatus = 'working' | 'idle' | 'sleeping';
@@ -23,49 +24,38 @@ const AGENT_COLORS: Record<string, string> = {
   sprite: '#FF69B4',
 };
 
-const AGENT_POSITIONS: Record<string, { x: number; y: number }> = {
-  forge: { x: 270, y: 420 },
-  percival: { x: 600, y: 370 },
-  sprite: { x: 940, y: 460 },
-};
-
-function gwToAgents(gwAgents: GwAgentStatus[]): Agent[] {
+function gwToAgents(gwAgents: GwAgentStatus[], roomId: string): Agent[] {
+  const room = ROOMS.find((r) => r.id === roomId);
   return gwAgents.map((a) => ({
     id: a.id,
     name: a.name,
     color: AGENT_COLORS[a.id] ?? '#888',
     status: a.status,
     currentTask: a.currentTask,
-    position: AGENT_POSITIONS[a.id] ?? { x: 600, y: 400 },
+    position: room?.agentPositions[a.id] ?? { x: 600, y: 400 },
   }));
 }
 
-const DEFAULT_AGENTS: Agent[] = [
-  {
-    id: 'forge',
-    name: 'Forge',
-    color: '#DC143C',
-    status: 'sleeping',
-    currentTask: 'Connecting to gateway...',
-    position: { x: 270, y: 420 },
-  },
-  {
-    id: 'percival',
-    name: 'Percival',
-    color: '#9B59B6',
-    status: 'sleeping',
-    currentTask: 'Connecting to gateway...',
-    position: { x: 600, y: 370 },
-  },
-  {
-    id: 'sprite',
-    name: 'Sprite',
-    color: '#FF69B4',
-    status: 'sleeping',
-    currentTask: 'Connecting to gateway...',
-    position: { x: 940, y: 460 },
-  },
-];
+function makeDefaultAgents(roomId: string): Agent[] {
+  const room = ROOMS.find((r) => r.id === roomId);
+  return [
+    {
+      id: 'forge', name: 'Forge', color: '#DC143C', status: 'sleeping',
+      currentTask: 'Connecting to gateway...',
+      position: room?.agentPositions['forge'] ?? { x: 270, y: 420 },
+    },
+    {
+      id: 'percival', name: 'Percival', color: '#9B59B6', status: 'sleeping',
+      currentTask: 'Connecting to gateway...',
+      position: room?.agentPositions['percival'] ?? { x: 600, y: 370 },
+    },
+    {
+      id: 'sprite', name: 'Sprite', color: '#FF69B4', status: 'sleeping',
+      currentTask: 'Connecting to gateway...',
+      position: room?.agentPositions['sprite'] ?? { x: 940, y: 460 },
+    },
+  ];
+}
 
 const SPRITE_FILES: Record<string, string> = {
   forge: '/assets/sprites/forge-idle.png',
@@ -74,21 +64,25 @@ const SPRITE_FILES: Record<string, string> = {
 };
 
 // ─── Component ─────────────────────────────────────────────────
-export function OfficeCanvas() {
+interface OfficeCanvasProps {
+  roomId: string;
+}
+
+export function OfficeCanvas({ roomId }: OfficeCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [hoveredAgent, setHoveredAgent] = useState<string | null>(null);
   const animFrameRef = useRef<number>(0);
   const timeRef = useRef(0);
 
   // Live agent data from gateway
-  const [agents, setAgents] = useState<Agent[]>(DEFAULT_AGENTS);
-  const agentsRef = useRef<Agent[]>(DEFAULT_AGENTS);
+  const [agents, setAgents] = useState<Agent[]>(() => makeDefaultAgents(roomId));
+  const agentsRef = useRef<Agent[]>(makeDefaultAgents(roomId));
 
   const handleGatewayUpdate = useCallback((gwAgents: GwAgentStatus[]) => {
-    const updated = gwToAgents(gwAgents);
+    const updated = gwToAgents(gwAgents, roomId);
     agentsRef.current = updated;
     setAgents(updated);
-  }, []);
+  }, [roomId]);
 
   // Poll agent status
   useEffect(() => {
@@ -99,8 +93,24 @@ export function OfficeCanvas() {
     return () => provider.stop();
   }, [handleGatewayUpdate]);
 
+  // Update agent positions when room changes
+  useEffect(() => {
+    const room = ROOMS.find((r) => r.id === roomId);
+    if (!room) return;
+    agentsRef.current = agentsRef.current.map((a) => ({
+      ...a,
+      position: room.agentPositions[a.id] ?? a.position,
+    }));
+    setAgents((prev) =>
+      prev.map((a) => ({
+        ...a,
+        position: room.agentPositions[a.id] ?? a.position,
+      }))
+    );
+  }, [roomId]);
+
   // Loaded assets
-  const bgRef = useRef<HTMLImageElement | null>(null);
+  const bgRef = useRef<Record<string, HTMLImageElement>>({});
   const spritesRef = useRef<Record<string, HTMLCanvasElement>>({});
   const [ready, setReady] = useState(false);
 
@@ -109,13 +119,21 @@ export function OfficeCanvas() {
     let mounted = true;
 
     async function load() {
-      // Background
-      const bg = new Image();
-      bg.src = '/assets/room/office-room.png';
-      await new Promise<void>((res, rej) => {
-        bg.onload = () => res();
-        bg.onerror = rej;
-      });
+      // Pre-load all room backgrounds
+      const loadedBgs: Record<string, HTMLImageElement> = {};
+      for (const room of ROOMS) {
+        try {
+          const bg = new Image();
+          bg.src = room.background;
+          await new Promise<void>((res, rej) => {
+            bg.onload = () => res();
+            bg.onerror = rej;
+          });
+          loadedBgs[room.id] = bg;
+        } catch {
+          // skip if background not found
+        }
+      }
 
       // Sprites (use first frame from walk spritesheet)
       const processed: Record<string, HTMLCanvasElement> = {};
@@ -140,7 +158,7 @@ export function OfficeCanvas() {
       }
 
       if (mounted) {
-        bgRef.current = bg;
+        bgRef.current = loadedBgs;
         spritesRef.current = processed;
         setReady(true);
       }
@@ -181,15 +199,16 @@ export function OfficeCanvas() {
 
     animate();
     return () => cancelAnimationFrame(animFrameRef.current);
-  }, [ready, hoveredAgent, agents]);
+  }, [ready, hoveredAgent, agents, roomId]);
 
   // ── Render ───────────────────────────────────────────────────
   function render(ctx: CanvasRenderingContext2D, time: number) {
     ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
 
     // 1. Background
-    if (bgRef.current) {
-      ctx.drawImage(bgRef.current, 0, 0, CANVAS_W, CANVAS_H);
+    const bg = bgRef.current[roomId];
+    if (bg) {
+      ctx.drawImage(bg, 0, 0, CANVAS_W, CANVAS_H);
     }
 
     // 2. Agents
