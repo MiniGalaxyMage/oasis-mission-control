@@ -4,6 +4,7 @@ import { TabBar, Tab } from './components/TabBar';
 import { SessionsPanel } from './components/SessionsPanel';
 import { CostsPanel } from './components/CostsPanel';
 import { WorldMap } from './components/WorldMap';
+import { QuestsPanel } from './components/QuestsPanel';
 import './styles/pixel-ui.css';
 import { RoomSelector } from './components/RoomSelector';
 import { DEFAULT_ROOM } from './lib/rooms';
@@ -60,6 +61,7 @@ export function App() {
             agents={['percival', 'forge', 'sprite']}
           />
         )}
+        {activeTab === 'quests' && <QuestsPanel />}
         {activeTab === 'sessions' && <SessionsPanel />}
         {activeTab === 'costs' && <CostsPanel />}
       </div>
