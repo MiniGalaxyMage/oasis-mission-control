@@ -1,6 +1,9 @@
 import { useRef, useEffect, useState } from 'react';
 import './OfficeCanvas.css';
 import type { AgentData } from '../../types';
+import { SpriteAnimator } from '../../engine/SpriteAnimator';
+import { CollisionMap } from '../../engine/CollisionMap';
+import { AgentWalker } from '../../engine/AgentWalker';
 
 interface OfficeCanvasProps {
   agents: AgentData[];
@@ -389,6 +392,18 @@ export function OfficeCanvas({ agents }: OfficeCanvasProps) {
   const [roomBg, setRoomBg] = useState<HTMLCanvasElement | null>(null);
   const [ready, setReady] = useState(false);
 
+  // Percival walk system
+  const percivalWalkRef = useRef<SpriteAnimator | null>(null);
+  const percivalDeskRef = useRef<SpriteAnimator | null>(null);
+  const percivalCollisionRef = useRef<CollisionMap | null>(null);
+  const percivalWalkerRef = useRef<AgentWalker | null>(null);
+  const percivalElapsedRef = useRef(0);
+  const percivalSitTimerRef = useRef(3000); // ms before standing up
+  const percivalSittingRef = useRef(true);
+  const debugOverlayRef = useRef(false);
+  const lastFrameTimeRef = useRef<number | null>(null);
+  const fpsRef = useRef(0);
+
   const activeAgents = agents.length > 0 ? agents : DEMO_AGENTS;
 
   // Load sprites + build room background
@@ -412,6 +427,55 @@ export function OfficeCanvas({ agents }: OfficeCanvasProps) {
           // sprite not found — skip gracefully
         }
       }
+
+      // Initialize Percival walk system
+      try {
+        const posRes = await fetch('/assets/room/positions.json');
+        const posData = await posRes.json();
+        const rawMatrix: string[] = posData.matrix;
+
+        const CANVAS_W = 1200, CANVAS_H = 675;
+        const collisionMap = new CollisionMap(rawMatrix, CANVAS_W, CANVAS_H);
+        percivalCollisionRef.current = collisionMap;
+
+        // Start tile from chair position
+        const chairX = posData.percival_chair?.x ?? 504;
+        const chairY = posData.percival_chair?.y ?? 408;
+        const startTile = collisionMap.pixelToTile(chairX, chairY);
+
+        const walker = new AgentWalker(collisionMap, {
+          startTileX: startTile.tx,
+          startTileY: startTile.ty,
+          speed: 120,
+          idleTimeMs: 3000,
+        });
+        // Override initial pixel position to exact chair coords
+        // (AgentWalker snaps to tile center; close enough for chair)
+        percivalWalkerRef.current = walker;
+
+        const walkAnimator = new SpriteAnimator({
+          imageSrc: '/assets/sprites/percival-walk.png',
+          cellWidth: 128,
+          cellHeight: 176,
+          columns: 4,
+          fps: 8,
+        });
+        await walkAnimator.load();
+        percivalWalkRef.current = walkAnimator;
+
+        const deskAnimator = new SpriteAnimator({
+          imageSrc: '/assets/sprites/percival-desk.png',
+          cellWidth: 128,
+          cellHeight: 176,
+          columns: 4,
+          fps: 6,
+        });
+        await deskAnimator.load();
+        percivalDeskRef.current = deskAnimator;
+      } catch (e) {
+        console.warn('Percival walk system failed to init:', e);
+      }
+
       if (mounted) {
         setSpriteImages(result);
         setRoomBg(bg);
@@ -428,6 +492,17 @@ export function OfficeCanvas({ agents }: OfficeCanvasProps) {
     hoveredRef.current = hoveredAgent;
   }, [hoveredAgent]);
 
+  // Debug overlay toggle (D key)
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'd' || e.key === 'D') {
+        debugOverlayRef.current = !debugOverlayRef.current;
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, []);
+
   // Animation loop
   useEffect(() => {
     if (!ready) return;
@@ -440,13 +515,34 @@ export function OfficeCanvas({ agents }: OfficeCanvasProps) {
     canvas.height = 675;
     ctx.imageSmoothingEnabled = false;
 
-    const animate = () => {
-      timeRef.current += 0.016;
+    const animate = (timestamp: number) => {
+      const dt = lastFrameTimeRef.current !== null
+        ? Math.min((timestamp - lastFrameTimeRef.current) / 1000, 0.1)
+        : 0.016;
+      lastFrameTimeRef.current = timestamp;
+      fpsRef.current = dt > 0 ? Math.round(1 / dt) : 60;
+
+      timeRef.current += dt;
+      percivalElapsedRef.current += dt * 1000;
+
+      // Sitting countdown
+      if (percivalSittingRef.current) {
+        percivalSitTimerRef.current -= dt * 1000;
+        if (percivalSitTimerRef.current <= 0) {
+          percivalSittingRef.current = false;
+        }
+      }
+
+      // Update walker when not sitting
+      if (!percivalSittingRef.current && percivalWalkerRef.current) {
+        percivalWalkerRef.current.update(dt);
+      }
+
       render(ctx, timeRef.current);
       animationFrameRef.current = requestAnimationFrame(animate);
     };
 
-    animate();
+    requestAnimationFrame(animate);
     return () => {
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     };
@@ -478,7 +574,91 @@ export function OfficeCanvas({ agents }: OfficeCanvasProps) {
       // Monitor
       drawMonitor(ctx, sx, sy - 60, agent.status);
 
-      // Agent sprite
+      // ── Percival: new walk system ──
+      if (agent.id === 'percival' && percivalWalkerRef.current && percivalWalkRef.current) {
+        const walker = percivalWalkerRef.current;
+        const walkAnim = percivalWalkRef.current;
+        const deskAnim = percivalDeskRef.current;
+        const sitting = percivalSittingRef.current;
+
+        const SPRITE_H = 52; // target height in pixels
+        const scale = SPRITE_H / 176; // 176 = cellHeight
+        const spriteW = 128 * scale;
+        const spriteH = SPRITE_H;
+
+        // Position: sitting = at station, walking = walker position
+        const drawX = sitting ? sx : walker.x;
+        const drawY = sitting ? (sy - 50) : walker.y; // chair Y for sitting
+
+        // Shadow
+        ctx.save();
+        ctx.globalAlpha = 0.3;
+        ctx.fillStyle = '#000';
+        ctx.beginPath();
+        ctx.ellipse(drawX, drawY + 4, spriteW / 3, 6, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        // Draw sprite
+        const elapsed = percivalElapsedRef.current;
+        if (sitting && deskAnim?.isLoaded) {
+          // Sitting at desk: desk spritesheet (row 0)
+          const frame = deskAnim.getCurrentFrame(elapsed);
+          deskAnim.drawFrame(ctx, 0, frame, drawX - spriteW / 2, drawY - spriteH, scale);
+        } else if (walker.isMoving) {
+          // Walking: animated walk cycle
+          const dirRow = walker.direction === 'down' ? 0
+            : walker.direction === 'left' ? 1
+            : walker.direction === 'right' ? 2 : 3;
+          const frame = walkAnim.getCurrentFrame(elapsed);
+          walkAnim.drawFrame(ctx, dirRow, frame, drawX - spriteW / 2, drawY - spriteH, scale);
+        } else {
+          // Idle: frame 0 of last direction
+          const dirRow = walker.direction === 'down' ? 0
+            : walker.direction === 'left' ? 1
+            : walker.direction === 'right' ? 2 : 3;
+          walkAnim.drawFrame(ctx, dirRow, 0, drawX - spriteW / 2, drawY - spriteH, scale);
+        }
+
+        const spriteTopY = drawY - spriteH;
+        const spriteBotY = drawY;
+
+        // Hover highlight
+        if (hoveredRef.current === agent.id) {
+          ctx.save();
+          ctx.strokeStyle = '#FFD700';
+          ctx.lineWidth = 3;
+          ctx.globalAlpha = 0.8;
+          ctx.strokeRect(drawX - spriteW / 2 - 4, spriteTopY - 4, spriteW + 8, spriteH + 8);
+          ctx.restore();
+        }
+
+        // Name label
+        ctx.save();
+        ctx.font = 'bold 13px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 3;
+        ctx.strokeText(agent.name, drawX, spriteBotY + 6);
+        ctx.fillStyle = '#fff';
+        ctx.fillText(agent.name, drawX, spriteBotY + 6);
+        ctx.restore();
+
+        // Status square
+        const sqColor = agent.status === 'working' || agent.status === 'orchestrating' ? '#4AFF88'
+          : agent.status === 'thinking' ? '#4488ff'
+          : agent.status === 'error' ? '#ff4444' : '#666';
+        ctx.fillStyle = sqColor;
+        ctx.fillRect(drawX - 6, spriteBotY + 24, 12, 12);
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(drawX - 6, spriteBotY + 24, 12, 12);
+
+        return; // skip old system for percival
+      }
+
+      // ── Forge & Sprite: existing static system ──
       const sprites = spriteImages[agent.id];
       const useWorking = agent.status === 'working' || agent.status === 'orchestrating';
       const sprite = sprites ? (useWorking ? sprites.working : sprites.idle) : null;
@@ -597,12 +777,64 @@ export function OfficeCanvas({ agents }: OfficeCanvasProps) {
       }
     });
 
-    // 4. Speech bubbles on hover (on top of everything)
+    // 4. Debug overlay
+    if (debugOverlayRef.current && percivalCollisionRef.current) {
+      const cm = percivalCollisionRef.current;
+      for (let ty = 0; ty < cm.rows; ty++) {
+        for (let tx = 0; tx < cm.cols; tx++) {
+          const walkable = cm.canWalk(tx, ty);
+          const px = tx * cm.tileWidth;
+          const py = ty * cm.tileHeight;
+          ctx.save();
+          ctx.globalAlpha = 0.25;
+          ctx.fillStyle = walkable ? '#00ff00' : '#ff0000';
+          ctx.fillRect(px, py, cm.tileWidth, cm.tileHeight);
+          ctx.globalAlpha = 0.5;
+          ctx.strokeStyle = '#333';
+          ctx.lineWidth = 0.5;
+          ctx.strokeRect(px, py, cm.tileWidth, cm.tileHeight);
+          ctx.restore();
+        }
+      }
+      // Agent position dot
+      if (percivalWalkerRef.current) {
+        const w = percivalWalkerRef.current;
+        ctx.save();
+        ctx.fillStyle = '#FFD700';
+        ctx.beginPath();
+        ctx.arc(w.x, w.y, 5, 0, Math.PI * 2);
+        ctx.fill();
+        // Destination line
+        const dest = cm.tileToPixel(w.destTile.tx, w.destTile.ty);
+        ctx.strokeStyle = '#FFD700';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(w.x, w.y);
+        ctx.lineTo(dest.px, dest.py);
+        ctx.stroke();
+        ctx.restore();
+      }
+      // FPS
+      ctx.save();
+      ctx.font = 'bold 14px monospace';
+      ctx.fillStyle = '#FFD700';
+      ctx.fillText(`FPS: ${fpsRef.current}`, 10, 20);
+      ctx.restore();
+    }
+
+    // 5. Speech bubbles on hover (on top of everything)
     activeAgents.forEach((agent) => {
       const cfg = AGENT_CONFIG[agent.id];
       if (!cfg || hoveredRef.current !== agent.id || !agent.currentTask) return;
-      const { stationX: sx, stationY: sy } = cfg;
-      drawSpeechBubble(ctx, agent.currentTask, sx, sy - 160);
+      // For Percival walking, use walker position for bubble
+      let bx = cfg.stationX;
+      let by = cfg.stationY - 160;
+      if (agent.id === 'percival' && percivalWalkerRef.current && !percivalSittingRef.current) {
+        bx = percivalWalkerRef.current.x;
+        by = percivalWalkerRef.current.y - 80;
+      }
+      drawSpeechBubble(ctx, agent.currentTask, bx, by);
     });
   };
 
@@ -674,6 +906,18 @@ export function OfficeCanvas({ agents }: OfficeCanvasProps) {
     activeAgents.forEach((agent) => {
       const cfg = AGENT_CONFIG[agent.id];
       if (!cfg) return;
+
+      // Percival: use walker position when walking
+      if (agent.id === 'percival' && percivalWalkerRef.current && !percivalSittingRef.current) {
+        const w = percivalWalkerRef.current;
+        const spriteH = 52, spriteW = 128 * (52 / 176);
+        const top = w.y - spriteH;
+        if (mx >= w.x - spriteW / 2 - 6 && mx <= w.x + spriteW / 2 + 6 && my >= top - 6 && my <= w.y + 6) {
+          found = agent.id;
+        }
+        return;
+      }
+
       const { stationX: sx, stationY: sy } = cfg;
       const sprites = spriteImages[agent.id];
       const sh = sprites ? 90 : 40;

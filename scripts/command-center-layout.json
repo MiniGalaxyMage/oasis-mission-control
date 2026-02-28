@@ -1,0 +1,99 @@
+{
+  "name": "OASIS Command Center",
+  "width": 25,
+  "height": 14,
+  "tile_size": 48,
+  "item_sheet": "office",
+  "floor": {
+    "source": "floors",
+    "col": 0,
+    "row": 4,
+    "alt_col": 2
+  },
+  "walls": {
+    "color": [48, 40, 58],
+    "height_tiles": 3,
+    "texture": "brick",
+    "side_width": 20
+  },
+  "items": [
+    {"_comment": "=== WALL-MOUNTED ITEMS (back wall, y=1-2) ==="},
+    
+    {"name": "bookshelf", "catalog": "bookshelves.bookshelf_2x2", "tx": 2, "ty": 1},
+    {"name": "painting_abstract", "catalog": "paintings.colorful_abstract", "tx": 5, "ty": 1},
+    {"name": "whiteboard", "catalog": "boards.whiteboard_map", "tx": 8, "ty": 1},
+    {"name": "bulletin_board", "catalog": "boards.bulletin_board", "tx": 11, "ty": 1},
+    {"name": "painting_portrait", "catalog": "paintings.group_portrait", "tx": 14, "ty": 1},
+    {"name": "painting_flag", "catalog": "paintings.pennant_flag_orange", "tx": 17, "ty": 1},
+    {"name": "shelf_rack", "catalog": "bookshelves.shelf_rack_2x4", "tx": 20, "ty": 1},
+    
+    {"_comment": "=== FORGE STATION (left, x=2-5) ==="},
+    
+    {"name": "forge_desk", "catalog": "desks.grey_wide", "tx": 2, "ty": 6},
+    {"name": "forge_monitor_1", "catalog": "monitors.blue_large", "tx": 2, "ty": 4},
+    {"name": "forge_keyboard", "catalog": "monitors.keyboard", "tx": 4, "ty": 7},
+    {"name": "forge_tower", "catalog": "monitors.computer_tower", "tx": 5, "ty": 6},
+    {"name": "forge_chair", "catalog": "chairs.blue_south_1", "tx": 3, "ty": 8},
+    {"name": "forge_lamp", "catalog": "equipment.desk_lamp", "tx": 1, "ty": 5},
+    
+    {"_comment": "=== PERCIVAL STATION (center, x=8-14) ==="},
+    
+    {"name": "percival_desk_left", "catalog": "desks.tan_surface_2x2", "tx": 8, "ty": 6},
+    {"name": "percival_desk_right", "catalog": "desks.tan_surface_2x2", "tx": 10, "ty": 6},
+    {"name": "percival_monitor_L", "catalog": "monitors.blue_large", "tx": 8, "ty": 4},
+    {"name": "percival_monitor_R", "catalog": "monitors.blue_small", "tx": 10, "ty": 4},
+    {"name": "percival_keyboard", "catalog": "monitors.keyboard", "tx": 10, "ty": 7},
+    {"name": "percival_tower", "catalog": "monitors.computer_tower", "tx": 12, "ty": 6},
+    {"name": "percival_chair", "catalog": "chairs.blue_south_2", "tx": 9, "ty": 8},
+    {"name": "percival_papers", "catalog": "documents.paper_stack", "tx": 12, "ty": 6},
+    
+    {"_comment": "=== SPRITE STATION (right, x=16-20) ==="},
+    
+    {"name": "sprite_desk", "catalog": "desks.tan_large_2x2", "tx": 16, "ty": 6},
+    {"name": "sprite_desk_ext", "catalog": "desks.tan_surface_2x2", "tx": 18, "ty": 6},
+    {"name": "sprite_monitor", "catalog": "monitors.blue_small", "tx": 17, "ty": 4},
+    {"name": "sprite_keyboard", "catalog": "monitors.keyboard", "tx": 18, "ty": 7},
+    {"name": "sprite_chair", "catalog": "chairs.blue_east", "tx": 18, "ty": 8},
+    {"name": "sprite_lamp", "catalog": "equipment.desk_lamp", "tx": 20, "ty": 5},
+    
+    {"_comment": "=== SERVER AREA (right wall) ==="},
+    
+    {"name": "server_rack", "catalog": "equipment.machine_grey", "tx": 22, "ty": 4},
+    {"name": "server_terminal", "catalog": "equipment.computer_terminal", "tx": 22, "ty": 6},
+    
+    {"_comment": "=== STORAGE ==="},
+    
+    {"name": "filing_cabinet", "catalog": "storage.filing_cabinet", "tx": 13, "ty": 4},
+    {"name": "locker", "catalog": "storage.locker_closed", "tx": 7, "ty": 4},
+    
+    {"_comment": "=== VENDING / COFFEE (bottom-left) ==="},
+    
+    {"name": "coffee_machine", "catalog": "vending.vending_1", "tx": 1, "ty": 10},
+    {"name": "water_cooler", "catalog": "vending.vending_2", "tx": 2, "ty": 10},
+    
+    {"_comment": "=== SEATING AREA (bottom-center) ==="},
+    
+    {"name": "sofa", "catalog": "sofas.beige_2x2", "tx": 10, "ty": 11},
+    
+    {"_comment": "=== PLANTS (corners + dividers) ==="},
+    
+    {"name": "plant_top_left", "catalog": "plants.large_green", "tx": 1, "ty": 3},
+    {"name": "plant_top_right", "catalog": "plants.large_green", "tx": 22, "ty": 3},
+    {"name": "plant_mid_left", "catalog": "plants.small_bush", "tx": 7, "ty": 9},
+    {"name": "plant_mid_right", "catalog": "plants.small_bush", "tx": 15, "ty": 9},
+    {"name": "plant_bottom_left", "catalog": "plants.cactus_tall", "tx": 1, "ty": 12},
+    {"name": "plant_bottom_right", "catalog": "plants.large_green", "tx": 22, "ty": 10},
+    
+    {"_comment": "=== MISC PROPS ==="},
+    
+    {"name": "fire_ext", "catalog": "equipment.fire_extinguisher", "tx": 23, "ty": 8},
+    {"name": "backpack_1", "catalog": "backpacks.grey_small", "tx": 6, "ty": 10},
+    {"name": "certificate_1", "catalog": "documents.certificate", "tx": 20, "ty": 2},
+    {"name": "rubber_duck", "catalog": "misc.rubber_duck", "tx": 12, "ty": 7}
+  ],
+  "lighting": {
+    "spotlights": [[4, 6], [10, 6], [18, 6]],
+    "warmth": 8,
+    "vignette": true
+  }
+}

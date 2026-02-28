@@ -1,0 +1,99 @@
+{
+  "forge_chair": {
+    "x": 168,
+    "y": 408,
+    "facing": "north"
+  },
+  "forge_desk": {
+    "x": 192,
+    "y": 312
+  },
+  "percival_chair": {
+    "x": 504,
+    "y": 408,
+    "facing": "north"
+  },
+  "percival_desk": {
+    "x": 528,
+    "y": 312
+  },
+  "sprite_chair": {
+    "x": 864,
+    "y": 408,
+    "facing": "north"
+  },
+  "sprite_desk": {
+    "x": 888,
+    "y": 312
+  },
+  "whiteboard": {
+    "x": 432,
+    "y": 96
+  },
+  "server_rack": {
+    "x": 1056,
+    "y": 144
+  },
+  "coffee": {
+    "x": 72,
+    "y": 504
+  },
+  "sofa": {
+    "x": 504,
+    "y": 528
+  },
+  "door": {
+    "x": 600,
+    "y": 648
+  },
+  "waypoints": [
+    {
+      "x": 336,
+      "y": 456
+    },
+    {
+      "x": 600,
+      "y": 456
+    },
+    {
+      "x": 840,
+      "y": 456
+    },
+    {
+      "x": 336,
+      "y": 552
+    },
+    {
+      "x": 600,
+      "y": 552
+    },
+    {
+      "x": 840,
+      "y": 552
+    },
+    {
+      "x": 168,
+      "y": 552
+    },
+    {
+      "x": 1032,
+      "y": 552
+    }
+  ],
+  "matrix": [
+    "WWWWWWWWWWWWWWWWWWWWWWWWW",
+    "WBBBB.HHHH.HHHH.....SSSSW",
+    "WBBBB.HHHH.HHHH.....SSSSW",
+    "WP...............F....PSW",
+    "W.MMMM..MMMMMM..MMMM..SW",
+    "W.MMMM..MMMMMM..MMMM...W",
+    "W.DDDD..DDDDDD..DDDD...W",
+    "W.DDDD..DDDDDD..DDDD...W",
+    "W..CC....CC......CC....W",
+    "W.P......P.......P.....W",
+    "WKV.......OO..........PW",
+    "WKV.......OO...........W",
+    "WP........................W",
+    "WWWWWWWWWWWWWWWWWWWWWWWWW"
+  ]
+}

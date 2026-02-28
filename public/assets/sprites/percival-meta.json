@@ -1,0 +1,18 @@
+{
+  "cellWidth": 128,
+  "cellHeight": 176,
+  "walk": {
+    "file": "percival-walk.png",
+    "rows": [
+      "down",
+      "left",
+      "right",
+      "up"
+    ],
+    "framesPerRow": 4
+  },
+  "desk": {
+    "file": "percival-desk.png",
+    "frames": 4
+  }
+}

@@ -1,0 +1,148 @@
+{
+  "_meta": {
+    "tilesheet": "Modern_Office_Black_Shadow_48x48.png",
+    "tile_size": 48,
+    "grid": "16 cols x 53 rows",
+    "usage": "office.crop((col*48, row*48, (col+w)*48, (row+h)*48))"
+  },
+  "walls": {
+    "peach_crosshatch":   { "col": 0, "row": 0, "w": 2, "h": 4, "note": "Full wall section with baseboard" },
+    "beige_crosshatch":   { "col": 2, "row": 0, "w": 2, "h": 4 },
+    "tan_plain":          { "col": 5, "row": 0, "w": 2, "h": 4 },
+    "yellow_tan":         { "col": 7, "row": 0, "w": 2, "h": 4 },
+    "dark_tan":           { "col": 11, "row": 0, "w": 2, "h": 4 },
+    "grey":               { "col": 13, "row": 0, "w": 2, "h": 4 },
+    "cream_plain":        { "col": 0, "row": 4, "w": 2, "h": 4 },
+    "cream_stripe":       { "col": 2, "row": 4, "w": 2, "h": 4 },
+    "lavender":           { "col": 5, "row": 4, "w": 2, "h": 4 },
+    "light_lavender":     { "col": 7, "row": 4, "w": 3, "h": 4 }
+  },
+  "floor_tiles": {
+    "olive_crosshatch":   { "col": 10, "row": 4 },
+    "pink_crosshatch":    { "col": 11, "row": 4 },
+    "brown_crosshatch":   { "col": 12, "row": 4 },
+    "grey_crosshatch":    { "col": 13, "row": 4 },
+    "beige_plain":        { "col": 14, "row": 4 }
+  },
+  "paintings": {
+    "colorful_abstract":      { "col": 15, "row": 0, "w": 1, "h": 1 },
+    "framed_red_blue":        { "col": 15, "row": 2, "w": 1, "h": 1 },
+    "group_portrait":         { "col": 0, "row": 12, "w": 2, "h": 2 },
+    "pennant_flag_orange":    { "col": 2, "row": 12, "w": 2, "h": 2 },
+    "small_portrait":         { "col": 4, "row": 12, "w": 1, "h": 2 }
+  },
+  "chairs": {
+    "blue_south_1":     { "col": 0, "row": 8, "w": 1, "h": 2, "note": "Office chair facing south (front view)" },
+    "blue_south_2":     { "col": 1, "row": 8, "w": 1, "h": 2 },
+    "blue_west":        { "col": 2, "row": 8, "w": 1, "h": 2, "note": "Facing left" },
+    "blue_east":        { "col": 3, "row": 8, "w": 1, "h": 2, "note": "Facing right" }
+  },
+  "plants": {
+    "large_green":      { "col": 5, "row": 8, "w": 1, "h": 2 },
+    "small_bush":       { "col": 5, "row": 11, "w": 1, "h": 1 },
+    "cactus_tall":      { "col": 5, "row": 12, "w": 1, "h": 1 }
+  },
+  "desks": {
+    "grey_wide": {
+      "note": "Dark grey 2-tile wide desk with drawers",
+      "col": 0, "row": 9, "w": 4, "h": 2
+    },
+    "tan_surface_2x2": {
+      "col": 5, "row": 17, "w": 2, "h": 2
+    },
+    "tan_large_2x2": {
+      "col": 5, "row": 19, "w": 2, "h": 2
+    },
+    "white_table_2x2": {
+      "col": 2, "row": 30, "w": 2, "h": 2
+    },
+    "beige_table_3x2": {
+      "col": 5, "row": 30, "w": 3, "h": 2
+    },
+    "cream_table_2x2": {
+      "col": 9, "row": 30, "w": 2, "h": 2
+    }
+  },
+  "monitors": {
+    "blue_large": {
+      "note": "Large blue-screen monitor (2x2 tiles)",
+      "col": 11, "row": 12, "w": 2, "h": 2
+    },
+    "blue_small": {
+      "note": "Small blue-screen monitor (2x2 tiles)",
+      "col": 13, "row": 12, "w": 2, "h": 2
+    },
+    "computer_tower": { "col": 10, "row": 12, "w": 1, "h": 1 },
+    "keyboard":       { "col": 10, "row": 13, "w": 1, "h": 1 }
+  },
+  "bookshelves": {
+    "bookshelf_2x2": {
+      "note": "Bookshelf with colored book spines",
+      "col": 6, "row": 12, "w": 2, "h": 2
+    },
+    "shelf_rack_2x4": {
+      "col": 6, "row": 15, "w": 2, "h": 2
+    }
+  },
+  "boards": {
+    "bulletin_board": {
+      "note": "Cork/pin bulletin board",
+      "col": 8, "row": 12, "w": 2, "h": 2
+    },
+    "whiteboard_map": {
+      "note": "Whiteboard with map/diagram",
+      "col": 8, "row": 14, "w": 2, "h": 2
+    }
+  },
+  "storage": {
+    "locker_closed":    { "col": 0, "row": 14, "w": 1, "h": 2 },
+    "locker_open":      { "col": 1, "row": 14, "w": 1, "h": 2 },
+    "filing_cabinet":   { "col": 8, "row": 10, "w": 2, "h": 2 },
+    "crate_wooden":     { "col": 14, "row": 18, "w": 2, "h": 2 }
+  },
+  "equipment": {
+    "desk_lamp":        { "col": 4, "row": 10, "w": 1, "h": 2 },
+    "fire_extinguisher": { "col": 6, "row": 11, "w": 1, "h": 1 },
+    "printer_copier":   { "col": 8, "row": 22, "w": 2, "h": 2 },
+    "robotic_arm":      { "col": 10, "row": 14, "w": 1, "h": 2 },
+    "crystal_ball":     { "col": 11, "row": 14, "w": 1, "h": 1 },
+    "computer_terminal":{ "col": 12, "row": 14, "w": 1, "h": 2 },
+    "machine_grey":     { "col": 13, "row": 8, "w": 2, "h": 2 }
+  },
+  "backpacks": {
+    "orange_closed":    { "col": 0, "row": 10, "w": 2, "h": 2 },
+    "orange_open":      { "col": 2, "row": 10, "w": 2, "h": 2 },
+    "grey_small":       { "col": 2, "row": 15, "w": 1, "h": 1 },
+    "grey_rounded":     { "col": 3, "row": 15, "w": 1, "h": 1 },
+    "purple_rounded":   { "col": 4, "row": 15, "w": 1, "h": 1 },
+    "gold_ornate":      { "col": 5, "row": 15, "w": 1, "h": 1 }
+  },
+  "partitions": {
+    "cubicle_wall_2x2":    { "col": 0, "row": 17, "w": 2, "h": 2 },
+    "cubicle_corner_2x2":  { "col": 2, "row": 17, "w": 2, "h": 2 },
+    "cubicle_L_shape_2x2": { "col": 0, "row": 19, "w": 2, "h": 2 },
+    "cubicle_T_shape_2x2": { "col": 0, "row": 21, "w": 2, "h": 2 },
+    "glass_partition_7x3": { "col": 2, "row": 26, "w": 7, "h": 3, "note": "Glass office partition wall" }
+  },
+  "vending": {
+    "vending_1": { "col": 2, "row": 24, "w": 1, "h": 2 },
+    "vending_2": { "col": 3, "row": 24, "w": 1, "h": 2 },
+    "vending_3": { "col": 4, "row": 24, "w": 1, "h": 2 },
+    "vending_4": { "col": 5, "row": 24, "w": 1, "h": 2 }
+  },
+  "sofas": {
+    "beige_2x2": { "col": 10, "row": 28, "w": 2, "h": 2 },
+    "grey_2x2":  { "col": 13, "row": 28, "w": 2, "h": 2 }
+  },
+  "documents": {
+    "paper_white":      { "col": 8, "row": 8, "w": 1, "h": 1 },
+    "certificate":      { "col": 8, "row": 9, "w": 1, "h": 1 },
+    "first_aid_kit":    { "col": 9, "row": 9, "w": 1, "h": 1 },
+    "paper_stack":      { "col": 7, "row": 17, "w": 1, "h": 2 }
+  },
+  "misc": {
+    "candle":           { "col": 6, "row": 9, "w": 1, "h": 1 },
+    "stool":            { "col": 4, "row": 11, "w": 1, "h": 1 },
+    "rubber_duck":      { "col": 5, "row": 9, "w": 1, "h": 1 }
+  }
+}

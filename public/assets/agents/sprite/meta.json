@@ -1,0 +1,137 @@
+{
+  "name": "sprite",
+  "animations": {
+    "walk_front": [
+      {
+        "file": "walk_front_0.png",
+        "width": 111,
+        "height": 114
+      },
+      {
+        "file": "walk_front_1.png",
+        "width": 128,
+        "height": 114
+      },
+      {
+        "file": "walk_front_2.png",
+        "width": 128,
+        "height": 116
+      },
+      {
+        "file": "walk_front_3.png",
+        "width": 113,
+        "height": 118
+      }
+    ],
+    "walk_right": [
+      {
+        "file": "walk_right_0.png",
+        "width": 110,
+        "height": 115
+      },
+      {
+        "file": "walk_right_1.png",
+        "width": 128,
+        "height": 114
+      },
+      {
+        "file": "walk_right_2.png",
+        "width": 128,
+        "height": 112
+      },
+      {
+        "file": "walk_right_3.png",
+        "width": 105,
+        "height": 111
+      }
+    ],
+    "walk_left": [
+      {
+        "file": "walk_left_0.png",
+        "width": 107,
+        "height": 112
+      },
+      {
+        "file": "walk_left_1.png",
+        "width": 128,
+        "height": 113
+      },
+      {
+        "file": "walk_left_2.png",
+        "width": 128,
+        "height": 116
+      },
+      {
+        "file": "walk_left_3.png",
+        "width": 105,
+        "height": 111
+      }
+    ],
+    "sit_side": [
+      {
+        "file": "sit_side_0.png",
+        "width": 122,
+        "height": 111
+      },
+      {
+        "file": "sit_side_1.png",
+        "width": 128,
+        "height": 113
+      },
+      {
+        "file": "sit_side_2.png",
+        "width": 128,
+        "height": 113
+      },
+      {
+        "file": "sit_side_3.png",
+        "width": 109,
+        "height": 112
+      }
+    ],
+    "walk_back": [
+      {
+        "file": "walk_back_0.png",
+        "width": 94,
+        "height": 110
+      },
+      {
+        "file": "walk_back_1.png",
+        "width": 128,
+        "height": 107
+      },
+      {
+        "file": "walk_back_2.png",
+        "width": 128,
+        "height": 101
+      },
+      {
+        "file": "walk_back_3.png",
+        "width": 82,
+        "height": 110
+      }
+    ],
+    "sit_front": [
+      {
+        "file": "sit_front_0.png",
+        "width": 109,
+        "height": 110
+      },
+      {
+        "file": "sit_front_1.png",
+        "width": 128,
+        "height": 105
+      },
+      {
+        "file": "sit_front_2.png",
+        "width": 128,
+        "height": 116
+      },
+      {
+        "file": "sit_front_3.png",
+        "width": 95,
+        "height": 121
+      }
+    ]
+  }
+}
