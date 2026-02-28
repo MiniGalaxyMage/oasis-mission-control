@@ -9,9 +9,9 @@
   {
     "id": "forge",
     "name": "Forge",
-    "status": "working",
-    "currentTask": "Implementando walker + transiciones",
-    "lastSeen": 1772318538
+    "status": "sleeping",
+    "currentTask": "\u2705 Easter eggs completados",
+    "lastSeen": 1772323068
   },
   {
     "id": "sprite",

@@ -50,8 +50,8 @@ export function updateWalker(
 ): WalkerState {
   let { currentPos, homePos, target, speed, isMoving, facingLeft, idleTimer } = state;
 
-  if (agentStatus === 'working') {
-    // Return to home position smoothly
+  if (agentStatus === 'sleeping') {
+    // Sleeping: return to home position and stay still
     const dx = homePos.x - currentPos.x;
     const dy = homePos.y - currentPos.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
@@ -68,7 +68,7 @@ export function updateWalker(
     return { ...state, currentPos, isMoving, facingLeft, target: null, idleTimer };
   }
 
-  // idle / sleeping: wander
+  // working / idle: wander around (actively doing things)
   if (target === null) {
     if (idleTimer > 0) {
       idleTimer--;
