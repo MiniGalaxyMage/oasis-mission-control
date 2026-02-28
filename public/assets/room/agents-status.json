@@ -1,0 +1,23 @@
+[
+  {
+    "id": "percival",
+    "name": "Percival",
+    "status": "working",
+    "currentTask": "Building Mission Control dashboard...",
+    "lastSeen": 1772293200
+  },
+  {
+    "id": "forge",
+    "name": "Forge",
+    "status": "sleeping",
+    "currentTask": "zzZ...",
+    "lastSeen": 0
+  },
+  {
+    "id": "sprite",
+    "name": "Sprite",
+    "status": "sleeping",
+    "currentTask": "zzZ...",
+    "lastSeen": 0
+  }
+]

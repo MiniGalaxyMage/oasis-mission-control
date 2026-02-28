@@ -1,4 +1,5 @@
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
+import { AgentStatusProvider, type AgentStatus as GwAgentStatus } from '../lib/gateway';
 
 // ─── Agent types ───────────────────────────────────────────────
 type AgentStatus = 'working' | 'idle' | 'sleeping';
@@ -16,29 +17,52 @@ interface Agent {
 const CANVAS_W = 1200;
 const CANVAS_H = 675;
 
-const AGENTS: Agent[] = [
+const AGENT_COLORS: Record<string, string> = {
+  percival: '#9B59B6',
+  forge: '#DC143C',
+  sprite: '#FF69B4',
+};
+
+const AGENT_POSITIONS: Record<string, { x: number; y: number }> = {
+  forge: { x: 270, y: 420 },
+  percival: { x: 600, y: 370 },
+  sprite: { x: 940, y: 460 },
+};
+
+function gwToAgents(gwAgents: GwAgentStatus[]): Agent[] {
+  return gwAgents.map((a) => ({
+    id: a.id,
+    name: a.name,
+    color: AGENT_COLORS[a.id] ?? '#888',
+    status: a.status,
+    currentTask: a.currentTask,
+    position: AGENT_POSITIONS[a.id] ?? { x: 600, y: 400 },
+  }));
+}
+
+const DEFAULT_AGENTS: Agent[] = [
   {
     id: 'forge',
     name: 'Forge',
     color: '#DC143C',
-    status: 'working',
-    currentTask: 'Building Excel export endpoint...',
+    status: 'sleeping',
+    currentTask: 'Connecting to gateway...',
     position: { x: 270, y: 420 },
   },
   {
     id: 'percival',
     name: 'Percival',
     color: '#9B59B6',
-    status: 'working',
-    currentTask: 'Orchestrating agent swarm...',
+    status: 'sleeping',
+    currentTask: 'Connecting to gateway...',
     position: { x: 600, y: 370 },
   },
   {
     id: 'sprite',
     name: 'Sprite',
     color: '#FF69B4',
-    status: 'idle',
-    currentTask: 'Waiting for design tasks...',
+    status: 'sleeping',
+    currentTask: 'Connecting to gateway...',
     position: { x: 940, y: 460 },
   },
 ];
@@ -55,6 +79,25 @@ export function OfficeCanvas() {
   const [hoveredAgent, setHoveredAgent] = useState<string | null>(null);
   const animFrameRef = useRef<number>(0);
   const timeRef = useRef(0);
+
+  // Live agent data from gateway
+  const [agents, setAgents] = useState<Agent[]>(DEFAULT_AGENTS);
+  const agentsRef = useRef<Agent[]>(DEFAULT_AGENTS);
+
+  const handleGatewayUpdate = useCallback((gwAgents: GwAgentStatus[]) => {
+    const updated = gwToAgents(gwAgents);
+    agentsRef.current = updated;
+    setAgents(updated);
+  }, []);
+
+  // Poll agent status
+  useEffect(() => {
+    const provider = new AgentStatusProvider({
+      onUpdate: handleGatewayUpdate,
+    });
+    provider.start();
+    return () => provider.stop();
+  }, [handleGatewayUpdate]);
 
   // Loaded assets
   const bgRef = useRef<HTMLImageElement | null>(null);
@@ -138,7 +181,7 @@ export function OfficeCanvas() {
 
     animate();
     return () => cancelAnimationFrame(animFrameRef.current);
-  }, [ready, hoveredAgent]);
+  }, [ready, hoveredAgent, agents]);
 
   // ── Render ───────────────────────────────────────────────────
   function render(ctx: CanvasRenderingContext2D, time: number) {
@@ -150,12 +193,12 @@ export function OfficeCanvas() {
     }
 
     // 2. Agents
-    for (const agent of AGENTS) {
+    for (const agent of agentsRef.current) {
       drawAgent(ctx, agent, time);
     }
 
     // 3. Speech bubbles (on top)
-    for (const agent of AGENTS) {
+    for (const agent of agentsRef.current) {
       if (agent.status === 'working' || hoveredAgent === agent.id) {
         drawSpeechBubble(ctx, agent);
       }
@@ -380,7 +423,7 @@ export function OfficeCanvas() {
     const my = ((e.clientY - rect.top) / rect.height) * CANVAS_H;
 
     let hit: string | null = null;
-    for (const agent of AGENTS) {
+    for (const agent of agentsRef.current) {
       const dx = mx - agent.position.x;
       const dy = my - agent.position.y;
       if (Math.abs(dx) < 30 && Math.abs(dy) < 40) {
