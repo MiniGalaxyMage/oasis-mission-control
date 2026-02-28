@@ -3,15 +3,15 @@
     "id": "percival",
     "name": "Percival",
     "status": "working",
-    "currentTask": "Building Mission Control dashboard...",
-    "lastSeen": 1772293200
+    "currentTask": "Implementing auto-status updates...",
+    "lastSeen": 1772295594
   },
   {
     "id": "forge",
     "name": "Forge",
     "status": "sleeping",
     "currentTask": "zzZ...",
-    "lastSeen": 0
+    "lastSeen": 1772295594
   },
   {
     "id": "sprite",
