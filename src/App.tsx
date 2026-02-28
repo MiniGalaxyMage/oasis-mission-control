@@ -3,17 +3,18 @@ import { OfficeCanvas } from './components/OfficeCanvas';
 import { TabBar, Tab } from './components/TabBar';
 import { SessionsPanel } from './components/SessionsPanel';
 import { CostsPanel } from './components/CostsPanel';
+import './styles/pixel-ui.css';
 
 export function App() {
   const [activeTab, setActiveTab] = useState<Tab>('office');
 
   return (
-    <div style={{ textAlign: 'center', padding: '20px', minHeight: '100vh', background: '#0a0a0a' }}>
+    <div className="pixel-app-bg">
       <h1
         style={{
           fontFamily: '"Press Start 2P", monospace',
           fontSize: '16px',
-          color: '#FFD700',
+          color: 'var(--accent-gold)',
           textShadow: '2px 2px 0 #000',
           marginBottom: '16px',
           letterSpacing: '4px',
@@ -26,13 +27,10 @@ export function App() {
 
       {/* Tab content wrapper */}
       <div
+        className="pixel-content-wrap"
         style={{
-          border: '2px solid #2a2a3a',
-          background: '#0d0d1a',
           padding: activeTab === 'office' ? '0' : '20px 0',
-          textAlign: 'left',
           maxWidth: activeTab === 'office' ? 'fit-content' : '960px',
-          margin: '0 auto',
         }}
       >
         {activeTab === 'office' && <OfficeCanvas />}
@@ -44,12 +42,12 @@ export function App() {
         style={{
           fontFamily: '"Press Start 2P", monospace',
           fontSize: '8px',
-          color: '#666',
+          color: 'var(--text-secondary)',
           marginTop: '12px',
         }}
       >
         Assets by{' '}
-        <a href="https://limezu.itch.io/" style={{ color: '#888' }}>
+        <a href="https://limezu.itch.io/" style={{ color: 'var(--text-primary)' }}>
           LimeZu
         </a>{' '}
         · Powered by OASIS Agent Swarm
