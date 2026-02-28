@@ -1,6 +1,6 @@
 {
   "name": "oasis-mission-control",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "🎮 OASIS Mission Control — Pixel art dashboard for monitoring the agent swarm",
   "type": "module",
   "scripts": {
@@ -9,10 +9,14 @@
     "preview": "vite preview"
   },
   "devDependencies": {
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.4",
     "typescript": "^5.3.3",
     "vite": "^5.1.4"
   },
   "dependencies": {
-    "phaser": "^3.87.0"
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
   }
 }
