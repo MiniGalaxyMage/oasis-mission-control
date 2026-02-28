@@ -3,6 +3,7 @@ import { AgentStatusProvider, type AgentStatus as GwAgentStatus } from '../lib/g
 import { ROOMS } from '../lib/rooms';
 import { createWalkerState, updateWalker, type WalkerState } from '../lib/agent-walker';
 import { DialogBox } from './DialogBox';
+import { audioManager } from '../lib/audio';
 
 // ─── Agent types ───────────────────────────────────────────────
 type AgentStatus = 'working' | 'idle' | 'sleeping';
@@ -80,8 +81,14 @@ export function OfficeCanvas({ roomId }: OfficeCanvasProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [hoveredAgent, setHoveredAgent] = useState<string | null>(null);
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
+  const [muted, setMuted] = useState(() => audioManager.muted);
   const animFrameRef = useRef<number>(0);
   const timeRef = useRef(0);
+
+  // Para detectar cambios de estado de agentes (wake/complete sounds)
+  const prevAgentStatusRef = useRef<Record<string, string>>({});
+  // Música sólo empieza al primer click del usuario (browser autoplay policy)
+  const musicStartedRef = useRef(false);
 
   // Live agent data from gateway
   const [agents, setAgents] = useState<Agent[]>(() => makeDefaultAgents(roomId));
@@ -101,6 +108,29 @@ export function OfficeCanvas({ roomId }: OfficeCanvasProps) {
 
   const handleGatewayUpdate = useCallback((gwAgents: GwAgentStatus[]) => {
     const updated = gwToAgents(gwAgents, activeRoomRef.current);
+
+    // Detectar cambios de estado para sonidos de agente
+    for (const agent of updated) {
+      const prev = prevAgentStatusRef.current[agent.id];
+      const curr = agent.status;
+      if (prev !== undefined && prev !== curr) {
+        // sleeping → working/idle: agente despierta
+        if (prev === 'sleeping' && (curr === 'working' || curr === 'idle')) {
+          audioManager.play('agent-wake');
+        }
+        // working → sleeping: tarea completada
+        if (prev === 'working' && curr === 'sleeping') {
+          audioManager.play('task-complete');
+        }
+      }
+      // task con ✅: completado
+      if (prev !== undefined && agent.currentTask.includes('✅') &&
+          !(agentsRef.current.find(a => a.id === agent.id)?.currentTask ?? '').includes('✅')) {
+        audioManager.play('task-complete');
+      }
+      prevAgentStatusRef.current[agent.id] = curr;
+    }
+
     agentsRef.current = updated;
     setAgents(updated);
   }, []);
@@ -114,6 +144,13 @@ export function OfficeCanvas({ roomId }: OfficeCanvasProps) {
     return () => provider.stop();
   }, [handleGatewayUpdate]);
 
+  // Música ambiental — inicia al primer click (browser autoplay policy)
+  useEffect(() => {
+    return () => {
+      audioManager.stopMusic();
+    };
+  }, []);
+
   // ── Room transition on roomId prop change ────────────────────
   useEffect(() => {
     if (roomId === activeRoomRef.current) return;
@@ -125,6 +162,7 @@ export function OfficeCanvas({ roomId }: OfficeCanvasProps) {
   }, [roomId]);
 
   function startTransition(targetRoom: string) {
+    audioManager.play('room-transition');
     transitioningRef.current = true;
     transitionPhaseRef.current = 'fade-out';
     transitionAlphaRef.current = 0;
@@ -559,17 +597,33 @@ export function OfficeCanvas({ roomId }: OfficeCanvasProps) {
     return null;
   }
 
+  const prevHoveredRef = useRef<string | null>(null);
+
   function handleMouseMove(e: React.MouseEvent<HTMLCanvasElement>) {
     if (transitioningRef.current) return;
     const { mx, my } = getCanvasCoords(e);
-    setHoveredAgent(hitTestAgent(mx, my));
+    const hit = hitTestAgent(mx, my);
+    // Sonido solo al entrar en un agente nuevo
+    if (hit && hit !== prevHoveredRef.current) {
+      audioManager.play('click');
+    }
+    prevHoveredRef.current = hit;
+    setHoveredAgent(hit);
   }
 
   function handleClick(e: React.MouseEvent<HTMLCanvasElement>) {
     if (transitioningRef.current) return;
+
+    // Primer click: iniciar música ambiental
+    if (!musicStartedRef.current) {
+      musicStartedRef.current = true;
+      audioManager.playMusic('/assets/audio/ambient-library.mp3', true);
+    }
+
     const { mx, my } = getCanvasCoords(e);
     const hit = hitTestAgent(mx, my);
     if (hit) {
+      audioManager.play('dialog-open');
       setSelectedAgent(hit);
     }
   }
@@ -602,6 +656,34 @@ export function OfficeCanvas({ roomId }: OfficeCanvasProps) {
 
   return (
     <div ref={wrapperRef} style={{ position: 'relative', display: 'inline-block', maxWidth: '100%' }}>
+      {/* Botón mute — esquina superior derecha */}
+      <button
+        onClick={() => {
+          const newMuted = audioManager.toggleMute();
+          setMuted(newMuted);
+        }}
+        title={muted ? 'Activar sonido' : 'Silenciar'}
+        style={{
+          position: 'absolute',
+          top: '8px',
+          right: '8px',
+          zIndex: 20,
+          background: 'transparent',
+          border: 'none',
+          cursor: 'pointer',
+          fontFamily: '"Press Start 2P", monospace',
+          fontSize: '10px',
+          color: '#666',
+          padding: '4px 6px',
+          lineHeight: 1,
+          transition: 'color 0.15s',
+        } as React.CSSProperties}
+        onMouseEnter={(e) => (e.currentTarget.style.color = '#FFD700')}
+        onMouseLeave={(e) => (e.currentTarget.style.color = '#666')}
+      >
+        {muted ? '🔇' : '🔊'}
+      </button>
+
       <canvas
         ref={canvasRef}
         width={CANVAS_W}
