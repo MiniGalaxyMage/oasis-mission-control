@@ -1,0 +1,149 @@
+/* ============================================================
+   OASIS Mission Control — LimeZu Pixel Art UI Skin
+   Tema: Medieval Library / Madera oscura / Pergamino
+   ============================================================ */
+
+/* ── Variables de tema ─────────────────────────────────────── */
+:root {
+  --bg-primary:      #0a0a0a;
+  --bg-panel:        #1a1209;
+  --bg-panel-inner:  #2a1f12;
+  --text-primary:    #e8d5b5;
+  --text-secondary:  #a89070;
+  --accent-gold:     #FFD700;
+  --accent-green:    #4ADE80;
+  --accent-red:      #EF4444;
+  --border:          #3a2a15;
+}
+
+/* ── Panel de madera (9-slice) ─────────────────────────────── */
+.pixel-panel {
+  border-image-source: url('/assets/ui/panel-large.png');
+  border-image-slice: 48 fill;
+  border-image-width: 24px;
+  border-image-repeat: repeat;
+  background: transparent;
+  padding: 16px;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges; /* Firefox */
+  box-sizing: border-box;
+}
+
+/* Variante oscura (tablas / fondos más profundos) */
+.pixel-panel--dark {
+  border-image-source: url('/assets/ui/panel-dark.png');
+  border-image-slice: 48 fill;
+  border-image-width: 24px;
+  border-image-repeat: repeat;
+  background: transparent;
+  padding: 16px;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  box-sizing: border-box;
+}
+
+/* ── Tab buttons ───────────────────────────────────────────── */
+.pixel-tab {
+  font-family: '"Press Start 2P", monospace';
+  font-size: 9px;
+  padding: 10px 16px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  outline: none;
+  image-rendering: pixelated;
+  border: 3px solid var(--border);
+  background: var(--bg-panel);
+  color: var(--text-secondary);
+  box-shadow:
+    inset 2px 2px 0 #4a3820,
+    inset -2px -2px 0 #0a0702;
+  transition: color 0.1s, border-color 0.1s, box-shadow 0.1s;
+}
+
+.pixel-tab--active {
+  border-color: var(--accent-gold);
+  color: var(--accent-gold);
+  background: var(--bg-panel-inner);
+  box-shadow:
+    inset 2px 2px 0 #6a5030,
+    inset -2px -2px 0 #1a0f02,
+    0 0 6px rgba(255, 215, 0, 0.25);
+}
+
+.pixel-tab:not(.pixel-tab--active):hover {
+  border-color: #5a4020;
+  color: var(--text-primary);
+}
+
+/* ── KPI Cards ─────────────────────────────────────────────── */
+.pixel-kpi-card {
+  flex: 1;
+  min-width: 160px;
+  padding: 0;               /* padding va dentro del panel */
+  text-align: left;
+}
+
+/* ── Barras de porcentaje pixel art ────────────────────────── */
+.pixel-bar-track {
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 6px;
+  width: 80px;
+  height: 8px;
+  background: var(--bg-primary);
+  border: 2px solid var(--border);
+  /* Sin border-radius — bordes cuadrados pixel art */
+  image-rendering: pixelated;
+}
+
+.pixel-bar-fill {
+  height: 100%;
+  image-rendering: pixelated;
+  /* Sin border-radius */
+}
+
+/* ── Tablas pixel ──────────────────────────────────────────── */
+.pixel-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 2px solid var(--border);
+  background: var(--bg-panel-inner);
+  image-rendering: pixelated;
+}
+
+.pixel-table th {
+  font-family: '"Press Start 2P", monospace';
+  font-size: 7px;
+  color: var(--accent-gold);
+  padding: 10px 8px;
+  text-align: left;
+  border-bottom: 2px solid var(--border);
+  background: var(--bg-panel);
+  letter-spacing: 1px;
+}
+
+.pixel-table td {
+  font-size: 11px;
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-primary);
+}
+
+.pixel-table tr:hover td {
+  background: rgba(255, 215, 0, 0.04);
+}
+
+/* ── Contenedor de app ─────────────────────────────────────── */
+.pixel-app-bg {
+  text-align: center;
+  padding: 20px;
+  min-height: 100vh;
+  background: var(--bg-primary);
+}
+
+.pixel-content-wrap {
+  border: 2px solid var(--border);
+  background: var(--bg-panel);
+  text-align: left;
+  margin: 0 auto;
+}
