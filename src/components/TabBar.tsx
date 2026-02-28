@@ -1,4 +1,4 @@
-export type Tab = 'office' | 'sessions' | 'costs';
+export type Tab = 'office' | 'map' | 'sessions' | 'costs';
 
 interface TabBarProps {
   activeTab: Tab;
@@ -7,6 +7,7 @@ interface TabBarProps {
 
 const TABS: { id: Tab; label: string; emoji: string }[] = [
   { id: 'office', label: 'OFFICE', emoji: '🏰' },
+  { id: 'map', label: 'MAP', emoji: '🗺️' },
   { id: 'sessions', label: 'SESSIONS', emoji: '💬' },
   { id: 'costs', label: 'COSTS', emoji: '💰' },
 ];

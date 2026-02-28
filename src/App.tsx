@@ -3,6 +3,7 @@ import { OfficeCanvas } from './components/OfficeCanvas';
 import { TabBar, Tab } from './components/TabBar';
 import { SessionsPanel } from './components/SessionsPanel';
 import { CostsPanel } from './components/CostsPanel';
+import { WorldMap } from './components/WorldMap';
 import './styles/pixel-ui.css';
 import { RoomSelector } from './components/RoomSelector';
 import { DEFAULT_ROOM } from './lib/rooms';
@@ -48,6 +49,16 @@ export function App() {
             <RoomSelector activeRoom={selectedRoom} onRoomChange={handleRoomChange} />
             <OfficeCanvas roomId={selectedRoom} />
           </>
+        )}
+        {activeTab === 'map' && (
+          <WorldMap
+            selectedRoom={selectedRoom}
+            onRoomSelect={(id) => {
+              handleRoomChange(id);
+              setActiveTab('office');
+            }}
+            agents={['percival', 'forge', 'sprite']}
+          />
         )}
         {activeTab === 'sessions' && <SessionsPanel />}
         {activeTab === 'costs' && <CostsPanel />}
