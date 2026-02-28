@@ -1,49 +1,93 @@
 {
   "sessions": [
     {
-      "id": "main-telegram",
-      "agent": "Percival",
-      "status": "working",
-      "task": "Building Mission Control dashboard...",
-      "model": "opus-4.6",
-      "channel": "telegram",
-      "lastActivity": "2026-02-28T16:30:00Z",
-      "tokens": 128450,
-      "cost": 8.34
-    },
-    {
-      "id": "forge-pr17",
+      "id": "run-1772313529",
       "agent": "Forge",
       "status": "sleeping",
-      "task": "Completed: Biblioteca Arcana rewrite",
-      "model": "sonnet-4.5",
+      "task": "\u2705 Skin pixel art LimeZu",
+      "model": "sonnet-4-6",
       "channel": "spawn",
-      "lastActivity": "2026-02-28T15:00:00Z",
-      "tokens": 45230,
-      "cost": 1.23
+      "lastActivity": "2026-02-28T21:18:49Z",
+      "tokens": 31609,
+      "cost": 0.47
     },
     {
-      "id": "sprite-room-design",
+      "id": "run-1772313529",
+      "agent": "Forge",
+      "status": "sleeping",
+      "task": "\u2705 Multi-room selector",
+      "model": "sonnet-4-6",
+      "channel": "spawn",
+      "lastActivity": "2026-02-28T21:18:49Z",
+      "tokens": 28000,
+      "cost": 0.42
+    },
+    {
+      "id": "run-1772313529",
       "agent": "Sprite",
       "status": "sleeping",
-      "task": "Completed: Tiled office room attempt",
-      "model": "sonnet-4.5",
+      "task": "\u2705 Tiled office room design",
+      "model": "sonnet-4-6",
       "channel": "spawn",
-      "lastActivity": "2026-02-28T12:30:00Z",
-      "tokens": 38900,
-      "cost": 0.98
+      "lastActivity": "2026-02-28T21:18:49Z",
+      "tokens": 45000,
+      "cost": 0.67
     },
     {
-      "id": "heartbeat-check",
-      "agent": "Haiku",
+      "id": "run-1772313529",
+      "agent": "Forge",
       "status": "sleeping",
-      "task": "Last heartbeat: all clear",
-      "model": "haiku-3.5",
-      "channel": "cron",
-      "lastActivity": "2026-02-28T16:00:00Z",
-      "tokens": 2100,
-      "cost": 0.02
+      "task": "\u2705 Biblioteca Arcana rewrite",
+      "model": "sonnet-4-6",
+      "channel": "spawn",
+      "lastActivity": "2026-02-28T21:18:49Z",
+      "tokens": 35000,
+      "cost": 0.52
+    },
+    {
+      "id": "c5cd4333-93a9-4d74-9d13-98a2ae78f7ab",
+      "agent": "Percival",
+      "status": "working",
+      "task": "Context: 43% used (86,302 tokens)",
+      "model": "opus-4-6",
+      "channel": "telegram",
+      "lastActivity": "2026-02-28T21:17:08.489000+00:00",
+      "tokens": 86302,
+      "cost": 1.75
+    },
+    {
+      "id": "1672e86a-9e07-4305-bafb-3ac7094c8aae",
+      "agent": "Percival",
+      "status": "working",
+      "task": "Context: 10% used (19,330 tokens)",
+      "model": "opus-4-6",
+      "channel": "webchat",
+      "lastActivity": "2026-02-28T21:17:07.689000+00:00",
+      "tokens": 19330,
+      "cost": 0.39
+    },
+    {
+      "id": "68ba3eb6-8c32-4dd3-abf4-1cf753c3dfc4",
+      "agent": "Percival",
+      "status": "sleeping",
+      "task": "Context: 0% used (0 tokens)",
+      "model": "opus-4-6",
+      "channel": "webchat",
+      "lastActivity": "2026-02-26T12:43:25.031000+00:00",
+      "tokens": 0,
+      "cost": 0.0
+    },
+    {
+      "id": "5a7c7df0-b277-4b2f-bf59-bab520eb95ed",
+      "agent": "Percival",
+      "status": "sleeping",
+      "task": "Context: 0% used (0 tokens)",
+      "model": "opus-4-6",
+      "channel": "webchat",
+      "lastActivity": "2026-02-26T00:21:21.830000+00:00",
+      "tokens": 0,
+      "cost": 0.0
     }
   ],
-  "updatedAt": "2026-02-28T16:30:00Z"
+  "updatedAt": "2026-02-28T21:18:55.456088+00:00"
 }

@@ -4,9 +4,19 @@ import { TabBar, Tab } from './components/TabBar';
 import { SessionsPanel } from './components/SessionsPanel';
 import { CostsPanel } from './components/CostsPanel';
 import './styles/pixel-ui.css';
+import { RoomSelector } from './components/RoomSelector';
+import { DEFAULT_ROOM } from './lib/rooms';
 
 export function App() {
   const [activeTab, setActiveTab] = useState<Tab>('office');
+  const [selectedRoom, setSelectedRoom] = useState<string>(
+    () => localStorage.getItem('oasis-selected-room') ?? DEFAULT_ROOM
+  );
+
+  function handleRoomChange(id: string) {
+    setSelectedRoom(id);
+    localStorage.setItem('oasis-selected-room', id);
+  }
 
   return (
     <div className="pixel-app-bg">
@@ -33,7 +43,12 @@ export function App() {
           maxWidth: activeTab === 'office' ? 'fit-content' : '960px',
         }}
       >
-        {activeTab === 'office' && <OfficeCanvas />}
+        {activeTab === 'office' && (
+          <>
+            <RoomSelector activeRoom={selectedRoom} onRoomChange={handleRoomChange} />
+            <OfficeCanvas roomId={selectedRoom} />
+          </>
+        )}
         {activeTab === 'sessions' && <SessionsPanel />}
         {activeTab === 'costs' && <CostsPanel />}
       </div>
