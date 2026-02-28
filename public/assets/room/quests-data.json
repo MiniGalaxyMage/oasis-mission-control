@@ -1,0 +1,67 @@
+{
+  "quests": [
+    {
+      "id": "quest-001",
+      "title": "Depurar los emails de Brevo",
+      "description": "El sistema @Async no envía correos de bienvenida. Investigar el TaskExecutor.",
+      "status": "active",
+      "priority": "main",
+      "assignee": "forge",
+      "project": "JIS",
+      "reward": "150 XP"
+    },
+    {
+      "id": "quest-002",
+      "title": "Excel download con datos",
+      "description": "Exportar Excel con datos poblados — reverse del bulk upload. Usuarios por comunidad y temas.",
+      "status": "active",
+      "priority": "main",
+      "assignee": null,
+      "project": "JIS",
+      "reward": "200 XP"
+    },
+    {
+      "id": "quest-003",
+      "title": "Easter eggs del Command Center",
+      "description": "Cofre animado al completar tarea, achievements, secretos escondidos en el castillo.",
+      "status": "active",
+      "priority": "side",
+      "assignee": "sprite",
+      "project": "OASIS",
+      "reward": "100 XP"
+    },
+    {
+      "id": "quest-004",
+      "title": "Day/Night cycle",
+      "description": "La ventana del fondo cambia según la hora real de Madrid. Atardecer, noche, amanecer.",
+      "status": "active",
+      "priority": "side",
+      "assignee": null,
+      "project": "OASIS",
+      "reward": "100 XP"
+    },
+    {
+      "id": "quest-005",
+      "title": "Exportación Excel backup",
+      "description": "Endpoints para exportar usuarios y temas a Excel.",
+      "status": "completed",
+      "priority": "main",
+      "assignee": "forge",
+      "project": "JIS",
+      "reward": "150 XP",
+      "completedAt": "2026-02-26"
+    },
+    {
+      "id": "quest-006",
+      "title": "Bulk load pipeline",
+      "description": "Pipeline automática: email → .docx → JSON → validación → producción.",
+      "status": "completed",
+      "priority": "main",
+      "assignee": "percival",
+      "project": "JIS",
+      "reward": "300 XP",
+      "completedAt": "2026-02-27"
+    }
+  ],
+  "updatedAt": "2026-02-28T23:00:00Z"
+}
