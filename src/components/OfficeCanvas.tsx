@@ -4,6 +4,8 @@ import { ROOMS } from '../lib/rooms';
 import { createWalkerState, updateWalker, type WalkerState } from '../lib/agent-walker';
 import { DialogBox } from './DialogBox';
 import { audioManager } from '../lib/audio';
+import { toastManager } from '../lib/toast-manager';
+import { ToastContainer } from './ToastContainer';
 
 // ─── Agent types ───────────────────────────────────────────────
 type AgentStatus = 'working' | 'idle' | 'sleeping';
@@ -116,11 +118,11 @@ export function OfficeCanvas({ roomId }: OfficeCanvasProps) {
       if (prev !== undefined && prev !== curr) {
         // sleeping → working/idle: agente despierta
         if (prev === 'sleeping' && (curr === 'working' || curr === 'idle')) {
-          audioManager.play('agent-wake');
+          toastManager.show('agent', `${agent.name} despierta`, 'Nueva tarea asignada', '⚔️');
         }
         // working → sleeping: tarea completada
         if (prev === 'working' && curr === 'sleeping') {
-          audioManager.play('task-complete');
+          toastManager.show('success', 'Tarea completada', agent.currentTask, '🏆');
         }
       }
       // task con ✅: completado
@@ -163,6 +165,10 @@ export function OfficeCanvas({ roomId }: OfficeCanvasProps) {
 
   function startTransition(targetRoom: string) {
     audioManager.play('room-transition');
+    const room = ROOMS.find((r) => r.id === targetRoom);
+    if (room) {
+      toastManager.show('info', room.name, 'Viajando a nueva sala...', room.icon, 3000);
+    }
     transitioningRef.current = true;
     transitionPhaseRef.current = 'fade-out';
     transitionAlphaRef.current = 0;
@@ -708,6 +714,7 @@ export function OfficeCanvas({ roomId }: OfficeCanvasProps) {
           onClose={() => setSelectedAgent(null)}
         />
       )}
+      <ToastContainer />
     </div>
   );
 }
