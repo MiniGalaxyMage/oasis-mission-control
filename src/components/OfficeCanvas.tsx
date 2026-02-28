@@ -1,6 +1,8 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { AgentStatusProvider, type AgentStatus as GwAgentStatus } from '../lib/gateway';
 import { ROOMS } from '../lib/rooms';
+import { createWalkerState, updateWalker, type WalkerState } from '../lib/agent-walker';
+import { DialogBox } from './DialogBox';
 
 // ─── Agent types ───────────────────────────────────────────────
 type AgentStatus = 'working' | 'idle' | 'sleeping';
@@ -11,6 +13,7 @@ interface Agent {
   color: string;
   status: AgentStatus;
   currentTask: string;
+  lastSeen?: number;
   position: { x: number; y: number };
 }
 
@@ -32,6 +35,7 @@ function gwToAgents(gwAgents: GwAgentStatus[], roomId: string): Agent[] {
     color: AGENT_COLORS[a.id] ?? '#888',
     status: a.status,
     currentTask: a.currentTask,
+    lastSeen: a.lastSeen,
     position: room?.agentPositions[a.id] ?? { x: 600, y: 400 },
   }));
 }
@@ -63,6 +67,9 @@ const SPRITE_FILES: Record<string, string> = {
   sprite: '/assets/sprites/sprite-idle.png',
 };
 
+// ─── Transition state ──────────────────────────────────────────
+type TransitionPhase = 'none' | 'fade-out' | 'fade-in';
+
 // ─── Component ─────────────────────────────────────────────────
 interface OfficeCanvasProps {
   roomId: string;
@@ -70,7 +77,9 @@ interface OfficeCanvasProps {
 
 export function OfficeCanvas({ roomId }: OfficeCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const [hoveredAgent, setHoveredAgent] = useState<string | null>(null);
+  const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
   const animFrameRef = useRef<number>(0);
   const timeRef = useRef(0);
 
@@ -78,11 +87,23 @@ export function OfficeCanvas({ roomId }: OfficeCanvasProps) {
   const [agents, setAgents] = useState<Agent[]>(() => makeDefaultAgents(roomId));
   const agentsRef = useRef<Agent[]>(makeDefaultAgents(roomId));
 
+  // Walker states keyed by agent id
+  const walkersRef = useRef<Record<string, WalkerState>>({});
+
+  // Active room (with transition buffering)
+  const activeRoomRef = useRef(roomId);
+  const transitionPhaseRef = useRef<TransitionPhase>('none');
+  const transitionAlphaRef = useRef(0);
+  const pendingRoomRef = useRef<string | null>(null);
+
+  // Transition block flag
+  const transitioningRef = useRef(false);
+
   const handleGatewayUpdate = useCallback((gwAgents: GwAgentStatus[]) => {
-    const updated = gwToAgents(gwAgents, roomId);
+    const updated = gwToAgents(gwAgents, activeRoomRef.current);
     agentsRef.current = updated;
     setAgents(updated);
-  }, [roomId]);
+  }, []);
 
   // Poll agent status
   useEffect(() => {
@@ -93,21 +114,74 @@ export function OfficeCanvas({ roomId }: OfficeCanvasProps) {
     return () => provider.stop();
   }, [handleGatewayUpdate]);
 
-  // Update agent positions when room changes
+  // ── Room transition on roomId prop change ────────────────────
   useEffect(() => {
-    const room = ROOMS.find((r) => r.id === roomId);
-    if (!room) return;
-    agentsRef.current = agentsRef.current.map((a) => ({
-      ...a,
-      position: room.agentPositions[a.id] ?? a.position,
-    }));
-    setAgents((prev) =>
-      prev.map((a) => ({
-        ...a,
-        position: room.agentPositions[a.id] ?? a.position,
-      }))
-    );
+    if (roomId === activeRoomRef.current) return;
+    if (transitioningRef.current) {
+      pendingRoomRef.current = roomId;
+      return;
+    }
+    startTransition(roomId);
   }, [roomId]);
+
+  function startTransition(targetRoom: string) {
+    transitioningRef.current = true;
+    transitionPhaseRef.current = 'fade-out';
+    transitionAlphaRef.current = 0;
+
+    // Animate fade-out over 300ms then swap room
+    const fadeOutDuration = 300;
+    const start = performance.now();
+
+    function fadeOut() {
+      const elapsed = performance.now() - start;
+      transitionAlphaRef.current = Math.min(elapsed / fadeOutDuration, 1);
+      if (elapsed < fadeOutDuration) {
+        requestAnimationFrame(fadeOut);
+      } else {
+        // Swap room
+        activeRoomRef.current = targetRoom;
+        const room = ROOMS.find((r) => r.id === targetRoom);
+        if (room) {
+          // Reset agent positions to new room's home
+          agentsRef.current = agentsRef.current.map((a) => ({
+            ...a,
+            position: room.agentPositions[a.id] ?? a.position,
+          }));
+          setAgents((prev) =>
+            prev.map((a) => ({
+              ...a,
+              position: room.agentPositions[a.id] ?? a.position,
+            }))
+          );
+          // Reset walkers to new home positions
+          walkersRef.current = {};
+        }
+        setSelectedAgent(null);
+        transitionPhaseRef.current = 'fade-in';
+        const fadeInStart = performance.now();
+        function fadeIn() {
+          const el = performance.now() - fadeInStart;
+          transitionAlphaRef.current = 1 - Math.min(el / fadeOutDuration, 1);
+          if (el < fadeOutDuration) {
+            requestAnimationFrame(fadeIn);
+          } else {
+            transitionAlphaRef.current = 0;
+            transitionPhaseRef.current = 'none';
+            transitioningRef.current = false;
+            // Check if there's a queued room change
+            if (pendingRoomRef.current && pendingRoomRef.current !== activeRoomRef.current) {
+              const next = pendingRoomRef.current;
+              pendingRoomRef.current = null;
+              startTransition(next);
+            }
+          }
+        }
+        requestAnimationFrame(fadeIn);
+      }
+    }
+    requestAnimationFrame(fadeOut);
+  }
 
   // Loaded assets
   const bgRef = useRef<Record<string, HTMLImageElement>>({});
@@ -119,7 +193,6 @@ export function OfficeCanvas({ roomId }: OfficeCanvasProps) {
     let mounted = true;
 
     async function load() {
-      // Pre-load all room backgrounds
       const loadedBgs: Record<string, HTMLImageElement> = {};
       for (const room of ROOMS) {
         try {
@@ -135,7 +208,6 @@ export function OfficeCanvas({ roomId }: OfficeCanvasProps) {
         }
       }
 
-      // Sprites (use first frame from walk spritesheet)
       const processed: Record<string, HTMLCanvasElement> = {};
       for (const [id, path] of Object.entries(SPRITE_FILES)) {
         try {
@@ -145,7 +217,6 @@ export function OfficeCanvas({ roomId }: OfficeCanvasProps) {
             img.onload = () => res();
             img.onerror = rej;
           });
-          // Use image directly (already a single idle sprite)
           const canvas = document.createElement('canvas');
           canvas.width = img.width;
           canvas.height = img.height;
@@ -153,7 +224,7 @@ export function OfficeCanvas({ roomId }: OfficeCanvasProps) {
           c.drawImage(img, 0, 0);
           processed[id] = canvas;
         } catch {
-          // If sprite not found, we'll draw a placeholder
+          // placeholder
         }
       }
 
@@ -168,18 +239,16 @@ export function OfficeCanvas({ roomId }: OfficeCanvasProps) {
     return () => { mounted = false; };
   }, []);
 
-  // Extract first frame from walk spritesheet (4 cols grid)
-  function extractFirstFrame(img: HTMLImageElement, _id: string): HTMLCanvasElement {
-    const cols = 4;
-    const frameW = img.width / cols;
-    const frameH = img.height / cols; // 4 rows (down, left, right, up)
-    const canvas = document.createElement('canvas');
-    canvas.width = frameW;
-    canvas.height = frameH;
-    const ctx = canvas.getContext('2d')!;
-    // First frame = row 0, col 0 (facing down)
-    ctx.drawImage(img, 0, 0, frameW, frameH, 0, 0, frameW, frameH);
-    return canvas;
+  // ── Walker init & update ─────────────────────────────────────
+  // Initialise walker for any agent that doesn't have one yet
+  function ensureWalkers() {
+    const room = ROOMS.find((r) => r.id === activeRoomRef.current);
+    for (const agent of agentsRef.current) {
+      if (!walkersRef.current[agent.id]) {
+        const homePos = room?.agentPositions[agent.id] ?? agent.position;
+        walkersRef.current[agent.id] = createWalkerState(homePos);
+      }
+    }
   }
 
   // ── Animation loop ───────────────────────────────────────────
@@ -193,20 +262,36 @@ export function OfficeCanvas({ roomId }: OfficeCanvasProps) {
 
     function animate() {
       timeRef.current += 0.016;
+
+      // Update walkers
+      ensureWalkers();
+      const room = ROOMS.find((r) => r.id === activeRoomRef.current);
+      const area = room?.walkableArea ?? { minX: 50, maxX: 1150, minY: 350, maxY: 550 };
+
+      for (const agent of agentsRef.current) {
+        const walker = walkersRef.current[agent.id];
+        if (walker) {
+          walkersRef.current[agent.id] = updateWalker(walker, agent.status, area);
+        }
+      }
+
       render(ctx, timeRef.current);
       animFrameRef.current = requestAnimationFrame(animate);
     }
 
     animate();
     return () => cancelAnimationFrame(animFrameRef.current);
-  }, [ready, hoveredAgent, agents, roomId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, hoveredAgent, agents, selectedAgent]);
 
   // ── Render ───────────────────────────────────────────────────
   function render(ctx: CanvasRenderingContext2D, time: number) {
     ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
 
+    const currentRoom = activeRoomRef.current;
+
     // 1. Background
-    const bg = bgRef.current[roomId];
+    const bg = bgRef.current[currentRoom];
     if (bg) {
       ctx.drawImage(bg, 0, 0, CANVAS_W, CANVAS_H);
     }
@@ -222,19 +307,38 @@ export function OfficeCanvas({ roomId }: OfficeCanvasProps) {
         drawSpeechBubble(ctx, agent);
       }
     }
+
+    // 4. Transition overlay (fade to/from black)
+    const alpha = transitionAlphaRef.current;
+    if (alpha > 0) {
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.restore();
+    }
+  }
+
+  function getWalkerPos(agent: Agent): { x: number; y: number } {
+    const walker = walkersRef.current[agent.id];
+    return walker ? walker.currentPos : agent.position;
+  }
+
+  function isFacingLeft(agent: Agent): boolean {
+    const walker = walkersRef.current[agent.id];
+    return walker ? walker.facingLeft : false;
   }
 
   function drawAgent(ctx: CanvasRenderingContext2D, agent: Agent, time: number) {
-    const { x, y } = agent.position;
+    const { x, y } = getWalkerPos(agent);
+    const facingLeft = isFacingLeft(agent);
     const sprite = spritesRef.current[agent.id];
 
-    // Subtle breathing animation (no floating/bouncing)
     const phase = agent.id.charCodeAt(0) * 0.7;
     const breathSpeed = agent.status === 'working' ? 2 : 1;
     const breathAmount = agent.status === 'working' ? 1 : 0.5;
     const bobY = Math.sin(time * breathSpeed + phase) * breathAmount;
 
-    // Target sprite height on canvas
     const targetH = 95;
 
     if (sprite) {
@@ -242,7 +346,7 @@ export function OfficeCanvas({ roomId }: OfficeCanvasProps) {
       const w = sprite.width * scale;
       const h = targetH;
 
-      // Ground shadow (warm-tinted, anchored at feet)
+      // Ground shadow
       ctx.save();
       ctx.globalAlpha = 0.4;
       ctx.fillStyle = '#1a0a00';
@@ -251,7 +355,6 @@ export function OfficeCanvas({ roomId }: OfficeCanvasProps) {
       ctx.fill();
       ctx.restore();
 
-      // Sprite anchored at feet (y = bottom of sprite)
       const spriteX = x - w / 2;
       const spriteY = y - h + bobY;
 
@@ -262,10 +365,18 @@ export function OfficeCanvas({ roomId }: OfficeCanvasProps) {
       } else {
         ctx.filter = 'sepia(0.08) brightness(1.02)';
       }
-      ctx.drawImage(sprite, spriteX, spriteY, w, h);
+
+      // Horizontal flip when facing left
+      if (facingLeft) {
+        ctx.translate(x, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(sprite, -w / 2, spriteY, w, h);
+      } else {
+        ctx.drawImage(sprite, spriteX, spriteY, w, h);
+      }
       ctx.restore();
 
-      // Warm candlelight rim (subtle orange glow)
+      // Warm candlelight rim
       ctx.save();
       ctx.globalAlpha = 0.12;
       ctx.globalCompositeOperation = 'overlay';
@@ -273,7 +384,6 @@ export function OfficeCanvas({ roomId }: OfficeCanvasProps) {
       ctx.fillRect(spriteX, spriteY, w, h);
       ctx.restore();
     } else {
-      // Placeholder circle
       ctx.save();
       ctx.fillStyle = agent.color;
       ctx.globalAlpha = agent.status === 'sleeping' ? 0.5 : 1;
@@ -283,12 +393,10 @@ export function OfficeCanvas({ roomId }: OfficeCanvasProps) {
       ctx.restore();
     }
 
-    // Sleep indicator
     if (agent.status === 'sleeping') {
       drawSleep(ctx, x, y - targetH + bobY, time);
     }
 
-    // Active indicator (pulsing dot)
     if (agent.status === 'working') {
       const pulse = Math.sin(time * 4);
       ctx.save();
@@ -300,7 +408,7 @@ export function OfficeCanvas({ roomId }: OfficeCanvasProps) {
       ctx.restore();
     }
 
-    // Name label (below feet)
+    // Name label
     ctx.save();
     ctx.font = 'bold 12px "Press Start 2P", monospace';
     ctx.textAlign = 'center';
@@ -319,7 +427,8 @@ export function OfficeCanvas({ roomId }: OfficeCanvasProps) {
       ctx.lineWidth = 2;
       ctx.globalAlpha = 0.8;
       const hw = targetH * 0.7;
-      ctx.strokeRect(x - hw / 2 - 4, y - targetH + bobY - 4, hw + 8, targetH + 8);
+      const spriteTop = y - targetH + bobY;
+      ctx.strokeRect(x - hw / 2 - 4, spriteTop - 4, hw + 8, targetH + 8);
       ctx.restore();
     }
   }
@@ -347,15 +456,14 @@ export function OfficeCanvas({ roomId }: OfficeCanvasProps) {
 
   function drawSpeechBubble(ctx: CanvasRenderingContext2D, agent: Agent) {
     if (!agent.currentTask) return;
-    const { x, y } = agent.position;
+    const { x, y } = getWalkerPos(agent);
 
     const bubbleW = 240;
     const bubbleH = 50;
     const bubbleX = x - bubbleW / 2;
-    const bubbleY = y - 95 - 50; // above the sprite head
+    const bubbleY = y - 95 - 50;
     const radius = 8;
 
-    // Shadow
     ctx.save();
     ctx.globalAlpha = 0.3;
     ctx.fillStyle = '#1a0a00';
@@ -363,18 +471,15 @@ export function OfficeCanvas({ roomId }: OfficeCanvasProps) {
     ctx.fill();
     ctx.restore();
 
-    // Background (parchment tone)
     ctx.fillStyle = '#f0dfc0';
     roundRect(ctx, bubbleX, bubbleY, bubbleW, bubbleH, radius);
     ctx.fill();
 
-    // Border (warm brown instead of black)
     ctx.strokeStyle = '#6b4c2a';
     ctx.lineWidth = 2;
     roundRect(ctx, bubbleX, bubbleY, bubbleW, bubbleH, radius);
     ctx.stroke();
 
-    // Tail
     ctx.beginPath();
     ctx.moveTo(x - 8, bubbleY + bubbleH);
     ctx.lineTo(x + 8, bubbleY + bubbleH);
@@ -386,7 +491,6 @@ export function OfficeCanvas({ roomId }: OfficeCanvasProps) {
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Text (warm dark brown)
     ctx.font = '11px monospace';
     ctx.fillStyle = '#3a2a1a';
     ctx.textAlign = 'left';
@@ -434,23 +538,40 @@ export function OfficeCanvas({ roomId }: OfficeCanvasProps) {
   }
 
   // ── Mouse interaction ────────────────────────────────────────
-  function handleMouseMove(e: React.MouseEvent<HTMLCanvasElement>) {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+  function getCanvasCoords(e: React.MouseEvent<HTMLCanvasElement>): { mx: number; my: number } {
+    const canvas = canvasRef.current!;
     const rect = canvas.getBoundingClientRect();
-    const mx = ((e.clientX - rect.left) / rect.width) * CANVAS_W;
-    const my = ((e.clientY - rect.top) / rect.height) * CANVAS_H;
+    return {
+      mx: ((e.clientX - rect.left) / rect.width) * CANVAS_W,
+      my: ((e.clientY - rect.top) / rect.height) * CANVAS_H,
+    };
+  }
 
-    let hit: string | null = null;
+  function hitTestAgent(mx: number, my: number): string | null {
     for (const agent of agentsRef.current) {
-      const dx = mx - agent.position.x;
-      const dy = my - agent.position.y;
-      if (Math.abs(dx) < 30 && Math.abs(dy) < 40) {
-        hit = agent.id;
-        break;
+      const { x, y } = getWalkerPos(agent);
+      const dx = mx - x;
+      const dy = my - y;
+      if (Math.abs(dx) < 35 && Math.abs(dy) < 60) {
+        return agent.id;
       }
     }
-    setHoveredAgent(hit);
+    return null;
+  }
+
+  function handleMouseMove(e: React.MouseEvent<HTMLCanvasElement>) {
+    if (transitioningRef.current) return;
+    const { mx, my } = getCanvasCoords(e);
+    setHoveredAgent(hitTestAgent(mx, my));
+  }
+
+  function handleClick(e: React.MouseEvent<HTMLCanvasElement>) {
+    if (transitioningRef.current) return;
+    const { mx, my } = getCanvasCoords(e);
+    const hit = hitTestAgent(mx, my);
+    if (hit) {
+      setSelectedAgent(hit);
+    }
   }
 
   // ── Loading state ────────────────────────────────────────────
@@ -475,22 +596,36 @@ export function OfficeCanvas({ roomId }: OfficeCanvasProps) {
     );
   }
 
+  const selectedAgentData = selectedAgent
+    ? agentsRef.current.find((a) => a.id === selectedAgent)
+    : null;
+
   return (
-    <canvas
-      ref={canvasRef}
-      width={CANVAS_W}
-      height={CANVAS_H}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={() => setHoveredAgent(null)}
-      style={{
-        imageRendering: 'pixelated',
-        cursor: hoveredAgent ? 'pointer' : 'default',
-        border: '4px solid #2A2A2A',
-        boxShadow: '0 0 20px rgba(0, 0, 0, 0.5)',
-        background: '#000',
-        maxWidth: '100%',
-        height: 'auto',
-      } as React.CSSProperties}
-    />
+    <div ref={wrapperRef} style={{ position: 'relative', display: 'inline-block', maxWidth: '100%' }}>
+      <canvas
+        ref={canvasRef}
+        width={CANVAS_W}
+        height={CANVAS_H}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={() => setHoveredAgent(null)}
+        onClick={handleClick}
+        style={{
+          imageRendering: 'pixelated',
+          cursor: hoveredAgent ? 'pointer' : 'default',
+          border: '4px solid #2A2A2A',
+          boxShadow: '0 0 20px rgba(0, 0, 0, 0.5)',
+          background: '#000',
+          maxWidth: '100%',
+          height: 'auto',
+          display: 'block',
+        } as React.CSSProperties}
+      />
+      {selectedAgentData && (
+        <DialogBox
+          agent={selectedAgentData}
+          onClose={() => setSelectedAgent(null)}
+        />
+      )}
+    </div>
   );
 }
