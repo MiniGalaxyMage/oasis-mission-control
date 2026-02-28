@@ -1,4 +1,5 @@
 import { useRef, useEffect, useCallback } from 'react';
+import { achievementManager } from '../lib/achievements';
 
 interface WorldMapProps {
   selectedRoom: string;
@@ -210,7 +211,10 @@ export function WorldMap({ selectedRoom, onRoomSelect, agents }: WorldMapProps) 
 
   const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const room = getRoomAt(e.clientX, e.clientY);
-    if (room) onRoomSelect(room.id);
+    if (room) {
+      achievementManager.unlock('map-traveler');
+      onRoomSelect(room.id);
+    }
   };
 
   return (

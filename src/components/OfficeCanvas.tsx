@@ -6,6 +6,9 @@ import { DialogBox } from './DialogBox';
 import { audioManager } from '../lib/audio';
 import { toastManager } from '../lib/toast-manager';
 import { ToastContainer } from './ToastContainer';
+import { achievementManager, trackRoomVisit } from '../lib/achievements';
+import { konamiDetector, activatePartyMode, partyState, updatePartyParticles, drawPartyEffects } from '../lib/secrets';
+import { createTreasureChest, updateTreasureChest, drawTreasureChest, type TreasureChest } from '../lib/treasure-chest';
 
 // ─── Agent types ───────────────────────────────────────────────
 type AgentStatus = 'working' | 'idle' | 'sleeping';
@@ -91,6 +94,9 @@ export function OfficeCanvas({ roomId }: OfficeCanvasProps) {
   const prevAgentStatusRef = useRef<Record<string, string>>({});
   // Música sólo empieza al primer click del usuario (browser autoplay policy)
   const musicStartedRef = useRef(false);
+  // Treasure chests
+  const chestsRef = useRef<TreasureChest[]>([]);
+  const lastChestTimeRef = useRef(0);
 
   // Live agent data from gateway
   const [agents, setAgents] = useState<Agent[]>(() => makeDefaultAgents(roomId));
@@ -120,15 +126,28 @@ export function OfficeCanvas({ roomId }: OfficeCanvasProps) {
         if (prev === 'sleeping' && (curr === 'working' || curr === 'idle')) {
           toastManager.show('agent', `${agent.name} despierta`, 'Nueva tarea asignada', '⚔️');
         }
-        // working → sleeping: tarea completada
+        // working → sleeping: tarea completada → spawn treasure chest
         if (prev === 'working' && curr === 'sleeping') {
           toastManager.show('success', 'Tarea completada', agent.currentTask, '🏆');
+          const now = Date.now();
+          if (now - lastChestTimeRef.current > 1000) {
+            lastChestTimeRef.current = now;
+            const walkerPos = walkersRef.current[agent.id]?.currentPos ?? agent.position;
+            chestsRef.current.push(createTreasureChest(walkerPos.x, walkerPos.y));
+          }
         }
       }
       // task con ✅: completado
       if (prev !== undefined && agent.currentTask.includes('✅') &&
           !(agentsRef.current.find(a => a.id === agent.id)?.currentTask ?? '').includes('✅')) {
         audioManager.play('task-complete');
+        // Also spawn chest for ✅ completion
+        const now = Date.now();
+        if (now - lastChestTimeRef.current > 1000) {
+          lastChestTimeRef.current = now;
+          const walkerPos = walkersRef.current[agent.id]?.currentPos ?? agent.position;
+          chestsRef.current.push(createTreasureChest(walkerPos.x, walkerPos.y));
+        }
       }
       prevAgentStatusRef.current[agent.id] = curr;
     }
@@ -145,6 +164,18 @@ export function OfficeCanvas({ roomId }: OfficeCanvasProps) {
     provider.start();
     return () => provider.stop();
   }, [handleGatewayUpdate]);
+
+  // First-visit & night-owl achievements + Konami setup
+  useEffect(() => {
+    achievementManager.unlock('first-visit');
+    trackRoomVisit(roomId);
+    const hour = new Date().getHours();
+    if (hour >= 0 && hour < 6) {
+      achievementManager.unlock('night-owl');
+    }
+    konamiDetector.setCallback(() => activatePartyMode());
+    return () => { konamiDetector.setCallback(() => {}); };
+  }, []);
 
   // Música ambiental — inicia al primer click (browser autoplay policy)
   useEffect(() => {
@@ -165,6 +196,7 @@ export function OfficeCanvas({ roomId }: OfficeCanvasProps) {
 
   function startTransition(targetRoom: string) {
     audioManager.play('room-transition');
+    trackRoomVisit(targetRoom);
     const room = ROOMS.find((r) => r.id === targetRoom);
     if (room) {
       toastManager.show('info', room.name, 'Viajando a nueva sala...', room.icon, 3000);
@@ -304,7 +336,10 @@ export function OfficeCanvas({ roomId }: OfficeCanvasProps) {
     const ctx = canvas.getContext('2d')!;
     ctx.imageSmoothingEnabled = false;
 
-    function animate() {
+    let lastTs = performance.now();
+    function animate(ts: number) {
+      const dt = ts - lastTs;
+      lastTs = ts;
       timeRef.current += 0.016;
 
       // Update walkers
@@ -315,15 +350,33 @@ export function OfficeCanvas({ roomId }: OfficeCanvasProps) {
       for (const agent of agentsRef.current) {
         const walker = walkersRef.current[agent.id];
         if (walker) {
-          walkersRef.current[agent.id] = updateWalker(walker, agent.status, area);
+          walkersRef.current[agent.id] = updateWalker(
+            walker,
+            partyState.active ? 'working' : agent.status,
+            area,
+          );
         }
+      }
+
+      // Update treasure chests
+      for (const chest of chestsRef.current) {
+        updateTreasureChest(chest, dt);
+      }
+      chestsRef.current = chestsRef.current.filter((c) => c.state !== 'hidden');
+
+      // Update party particles using walker positions
+      if (partyState.active) {
+        const agentPositions = agentsRef.current.map((a) => ({
+          position: walkersRef.current[a.id]?.currentPos ?? a.position,
+        }));
+        updatePartyParticles(agentPositions);
       }
 
       render(ctx, timeRef.current);
       animFrameRef.current = requestAnimationFrame(animate);
     }
 
-    animate();
+    animFrameRef.current = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(animFrameRef.current);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, hoveredAgent, agents, selectedAgent]);
@@ -344,6 +397,14 @@ export function OfficeCanvas({ roomId }: OfficeCanvasProps) {
     for (const agent of agentsRef.current) {
       drawAgent(ctx, agent, time);
     }
+
+    // 2b. Treasure chests (after agents, before speech bubbles)
+    for (const chest of chestsRef.current) {
+      drawTreasureChest(ctx, chest);
+    }
+
+    // 2c. Party effects
+    drawPartyEffects(ctx, CANVAS_W, CANVAS_H);
 
     // 3. Speech bubbles (on top)
     for (const agent of agentsRef.current) {
@@ -667,6 +728,7 @@ export function OfficeCanvas({ roomId }: OfficeCanvasProps) {
         onClick={() => {
           const newMuted = audioManager.toggleMute();
           setMuted(newMuted);
+          if (newMuted) achievementManager.unlock('muted');
         }}
         title={muted ? 'Activar sonido' : 'Silenciar'}
         style={{
