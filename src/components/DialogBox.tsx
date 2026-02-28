@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { audioManager } from '../lib/audio';
 
 const AGENT_ICONS: Record<string, string> = {
   forge: '⚔️',
@@ -28,6 +29,11 @@ function formatLastSeen(lastSeen?: number): string {
 
 export function DialogBox({ agent, onClose }: DialogBoxProps) {
   const icon = AGENT_ICONS[agent.id] ?? '🤖';
+
+  function handleClose() {
+    audioManager.play('click');
+    onClose();
+  }
   const fullText = `Status: ${agent.status}\nTask: ${agent.currentTask}\nLast seen: ${formatLastSeen(agent.lastSeen)}`;
 
   const [displayed, setDisplayed] = useState('');
@@ -42,6 +48,10 @@ export function DialogBox({ agent, onClose }: DialogBoxProps) {
     function tick() {
       if (indexRef.current < fullText.length) {
         indexRef.current++;
+        // Sonido cada 3 letras para no saturar
+        if (indexRef.current % 3 === 0) {
+          audioManager.play('type-tick');
+        }
         setDisplayed(fullText.slice(0, indexRef.current));
         timerRef.current = setTimeout(tick, 30);
       }
@@ -55,17 +65,18 @@ export function DialogBox({ agent, onClose }: DialogBoxProps) {
   // Keyboard close
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') handleClose();
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onClose]);
 
   return (
     <>
       {/* Dark overlay — click outside to close */}
       <div
-        onClick={onClose}
+        onClick={handleClose}
         style={{
           position: 'absolute',
           inset: 0,
@@ -107,7 +118,7 @@ export function DialogBox({ agent, onClose }: DialogBoxProps) {
             {icon} {agent.name.toUpperCase()}
           </span>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             style={{
               background: 'none',
               border: '1px solid #6b4c2a',
