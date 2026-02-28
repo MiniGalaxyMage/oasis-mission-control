@@ -20,7 +20,7 @@ interface RoomDef {
 const ROOMS: RoomDef[] = [
   { id: 'observatory', name: 'Observatory', x: 400, y: 40,  w: 160, h: 120, color: '#0a1a2a', icon: '🔭' },
   { id: 'library',     name: 'Library',     x: 400, y: 310, w: 160, h: 120, color: '#2a1a0a', icon: '📚' },
-  { id: 'forge',       name: 'Forge',       x: 80,  y: 310, w: 160, h: 120, color: '#2a0a0a', icon: '⚒️' },
+  { id: 'forge-room',  name: 'Forge',       x: 80,  y: 310, w: 160, h: 120, color: '#2a0a0a', icon: '⚒️' },
   { id: 'throne',      name: 'Throne Room', x: 720, y: 310, w: 160, h: 120, color: '#1a0a1a', icon: '🏰' },
 ];
 

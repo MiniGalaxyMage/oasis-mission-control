@@ -3,15 +3,15 @@
     "id": "percival",
     "name": "Percival",
     "status": "working",
-    "currentTask": "Orquestando multi-room para Mission Control",
-    "lastSeen": 1772305291
+    "currentTask": "Dise\u00f1ando mapa del mundo top-down",
+    "lastSeen": 1772320436
   },
   {
     "id": "forge",
     "name": "Forge",
     "status": "working",
-    "currentTask": "Implementando selector multi-room",
-    "lastSeen": 1772305301
+    "currentTask": "Implementando walker + transiciones",
+    "lastSeen": 1772318538
   },
   {
     "id": "sprite",
