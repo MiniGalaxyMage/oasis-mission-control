@@ -32,6 +32,7 @@ COSTS_OUT = ASSETS_DIR / "costs-data.json"
 
 # OpenClaw sessions file (direct read for speed)
 OPENCLAW_SESSIONS = Path.home() / ".openclaw" / "agents" / "main" / "sessions" / "sessions.json"
+AGENT_RUNS_LOG = PROJECT_ROOT / "data" / "agent-runs.jsonl"
 
 # Pricing per 1M tokens (approximate)
 PRICING = {
@@ -114,6 +115,20 @@ def determine_status(session: dict) -> str:
     return "sleeping"
 
 
+def load_agent_runs() -> list:
+    """Load agent run history from JSONL log."""
+    runs = []
+    try:
+        with open(AGENT_RUNS_LOG) as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    runs.append(json.loads(line))
+    except FileNotFoundError:
+        pass
+    return runs
+
+
 def build_sessions_data(status_data: dict) -> dict:
     """Build sessions-data.json from openclaw status."""
     sessions = []
@@ -158,6 +173,22 @@ def build_sessions_data(status_data: dict) -> dict:
             "cost": round(cost, 2),
         })
 
+    # Add completed agent runs from log
+    agent_runs = load_agent_runs()
+    for run in agent_runs:
+        if run.get("status") == "completed":
+            sessions.append({
+                "id": f"run-{run.get('timestamp', 0)}",
+                "agent": run.get("agent", "Unknown").capitalize(),
+                "status": "sleeping",
+                "task": f"✅ {run.get('task', 'Completed')}",
+                "model": run.get("model", "unknown"),
+                "channel": "spawn",
+                "lastActivity": run.get("iso", now.isoformat()),
+                "tokens": run.get("tokens", 0),
+                "cost": run.get("cost", 0.0),
+            })
+
     # Sort by last activity (most recent first)
     sessions.sort(key=lambda x: x["lastActivity"], reverse=True)
 
@@ -172,10 +203,31 @@ def build_costs_data(status_data: dict) -> dict:
     now = datetime.now(timezone.utc)
     recent = status_data.get("sessions", {}).get("recent", [])
 
-    # Aggregate by agent and model
+    # Aggregate by agent and model (include agent runs log)
     by_agent: Dict[str, Dict] = {}
     by_model: Dict[str, Dict] = {}
     total_cost = 0.0
+
+    # Include completed agent runs in cost aggregation
+    agent_runs = load_agent_runs()
+    for run in agent_runs:
+        if run.get("status") != "completed":
+            continue
+        agent = run.get("agent", "unknown").capitalize()
+        model = run.get("model", "unknown")
+        tokens = run.get("tokens", 0)
+        cost = run.get("cost", 0.0) or estimate_cost(tokens, model)
+        total_cost += cost
+
+        if agent not in by_agent:
+            by_agent[agent] = {"agent": agent, "tokens": 0, "cost": 0.0}
+        by_agent[agent]["tokens"] += tokens
+        by_agent[agent]["cost"] = round(by_agent[agent]["cost"] + cost, 4)
+
+        if model not in by_model:
+            by_model[model] = {"model": model, "tokens": 0, "cost": 0.0}
+        by_model[model]["tokens"] += tokens
+        by_model[model]["cost"] = round(by_model[model]["cost"] + cost, 4)
 
     for s in recent:
         key = s.get("key", "")
