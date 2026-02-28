@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { audioManager } from '../lib/audio';
+import { achievementManager } from '../lib/achievements';
 
 const AGENT_ICONS: Record<string, string> = {
   forge: '⚔️',
@@ -29,6 +30,11 @@ function formatLastSeen(lastSeen?: number): string {
 
 export function DialogBox({ agent, onClose }: DialogBoxProps) {
   const icon = AGENT_ICONS[agent.id] ?? '🤖';
+
+  // Achievement: first dialog
+  useEffect(() => {
+    achievementManager.unlock('first-dialog');
+  }, []);
 
   function handleClose() {
     audioManager.play('click');
