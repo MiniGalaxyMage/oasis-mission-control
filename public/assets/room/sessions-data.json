@@ -1,0 +1,49 @@
+{
+  "sessions": [
+    {
+      "id": "main-telegram",
+      "agent": "Percival",
+      "status": "working",
+      "task": "Building Mission Control dashboard...",
+      "model": "opus-4.6",
+      "channel": "telegram",
+      "lastActivity": "2026-02-28T16:30:00Z",
+      "tokens": 128450,
+      "cost": 8.34
+    },
+    {
+      "id": "forge-pr17",
+      "agent": "Forge",
+      "status": "sleeping",
+      "task": "Completed: Biblioteca Arcana rewrite",
+      "model": "sonnet-4.5",
+      "channel": "spawn",
+      "lastActivity": "2026-02-28T15:00:00Z",
+      "tokens": 45230,
+      "cost": 1.23
+    },
+    {
+      "id": "sprite-room-design",
+      "agent": "Sprite",
+      "status": "sleeping",
+      "task": "Completed: Tiled office room attempt",
+      "model": "sonnet-4.5",
+      "channel": "spawn",
+      "lastActivity": "2026-02-28T12:30:00Z",
+      "tokens": 38900,
+      "cost": 0.98
+    },
+    {
+      "id": "heartbeat-check",
+      "agent": "Haiku",
+      "status": "sleeping",
+      "task": "Last heartbeat: all clear",
+      "model": "haiku-3.5",
+      "channel": "cron",
+      "lastActivity": "2026-02-28T16:00:00Z",
+      "tokens": 2100,
+      "cost": 0.02
+    }
+  ],
+  "updatedAt": "2026-02-28T16:30:00Z"
+}

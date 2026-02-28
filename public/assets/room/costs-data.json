@@ -1,0 +1,20 @@
+{
+  "today": 8.34,
+  "yesterday": 5.67,
+  "thisMonth": 34.56,
+  "lastMonth": 0,
+  "projected": 42.00,
+  "budget": 50.00,
+  "byAgent": [
+    {"agent": "Percival (Opus)", "tokens": 234500, "cost": 25.67},
+    {"agent": "Forge (Sonnet)", "tokens": 89000, "cost": 6.78},
+    {"agent": "Sprite (Sonnet)", "tokens": 23000, "cost": 2.11},
+    {"agent": "Haiku (Heartbeat)", "tokens": 8500, "cost": 0.02}
+  ],
+  "byModel": [
+    {"model": "claude-opus-4.6", "tokens": 234500, "cost": 25.67},
+    {"model": "claude-sonnet-4.5", "tokens": 112000, "cost": 8.89},
+    {"model": "claude-haiku-3.5", "tokens": 8500, "cost": 0.02}
+  ],
+  "updatedAt": "2026-02-28T16:30:00Z"
+}
