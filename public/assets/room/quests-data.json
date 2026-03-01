@@ -1,67 +1,71 @@
 {
   "quests": [
     {
-      "id": "quest-001",
-      "title": "Depurar los emails de Brevo",
-      "description": "El sistema @Async no envía correos de bienvenida. Investigar el TaskExecutor.",
-      "status": "active",
-      "priority": "main",
-      "assignee": "forge",
-      "project": "JIS",
-      "reward": "150 XP"
-    },
-    {
-      "id": "quest-002",
-      "title": "Excel download con datos",
-      "description": "Exportar Excel con datos poblados — reverse del bulk upload. Usuarios por comunidad y temas.",
-      "status": "active",
-      "priority": "main",
-      "assignee": null,
-      "project": "JIS",
-      "reward": "200 XP"
-    },
-    {
-      "id": "quest-003",
-      "title": "Easter eggs del Command Center",
-      "description": "Cofre animado al completar tarea, achievements, secretos escondidos en el castillo.",
-      "status": "active",
-      "priority": "side",
-      "assignee": "sprite",
-      "project": "OASIS",
-      "reward": "100 XP"
-    },
-    {
-      "id": "quest-004",
-      "title": "Day/Night cycle",
-      "description": "La ventana del fondo cambia según la hora real de Madrid. Atardecer, noche, amanecer.",
-      "status": "active",
-      "priority": "side",
-      "assignee": null,
-      "project": "OASIS",
-      "reward": "100 XP"
-    },
-    {
-      "id": "quest-005",
-      "title": "Exportación Excel backup",
-      "description": "Endpoints para exportar usuarios y temas a Excel.",
+      "id": "quest-jis-001",
+      "title": "Botones de descarga Excel",
+      "description": "Botones de descarga Excel",
       "status": "completed",
       "priority": "main",
-      "assignee": "forge",
+      "assignee": null,
       "project": "JIS",
-      "reward": "150 XP",
+      "reward": "200 XP",
       "completedAt": "2026-02-26"
     },
     {
-      "id": "quest-006",
-      "title": "Bulk load pipeline",
-      "description": "Pipeline automática: email → .docx → JSON → validación → producción.",
+      "id": "quest-jis-002",
+      "title": "Contraseñas seguras + email de bienvenida",
+      "description": "Contraseñas seguras + email de bienvenida",
       "status": "completed",
       "priority": "main",
-      "assignee": "percival",
+      "assignee": null,
       "project": "JIS",
-      "reward": "300 XP",
-      "completedAt": "2026-02-27"
+      "reward": "200 XP",
+      "completedAt": "2026-02-26"
+    },
+    {
+      "id": "quest-jis-003",
+      "title": "Debug emails Brevo",
+      "description": "Debug emails Brevo",
+      "status": "completed",
+      "priority": "main",
+      "assignee": null,
+      "project": "JIS",
+      "reward": "150 XP",
+      "completedAt": "2026-02-28"
+    },
+    {
+      "id": "quest-jis-004",
+      "title": "Excel download con datos poblados",
+      "description": "Excel download con datos poblados",
+      "status": "completed",
+      "priority": "main",
+      "assignee": null,
+      "project": "JIS",
+      "reward": "200 XP",
+      "completedAt": "2026-02-28"
+    },
+    {
+      "id": "quest-jis-005",
+      "title": "Exportación Excel de usuarios y temas",
+      "description": "Exportación Excel de usuarios y temas",
+      "status": "completed",
+      "priority": "main",
+      "assignee": null,
+      "project": "JIS",
+      "reward": "200 XP",
+      "completedAt": "2026-02-26"
+    },
+    {
+      "id": "quest-jis-006",
+      "title": "Rediseño visual panel admin",
+      "description": "Rediseño visual panel admin",
+      "status": "completed",
+      "priority": "side",
+      "assignee": null,
+      "project": "JIS",
+      "reward": "100 XP",
+      "completedAt": "2026-02-26"
     }
   ],
-  "updatedAt": "2026-02-28T23:00:00Z"
+  "updatedAt": "2026-03-01T00:16:14Z"
 }

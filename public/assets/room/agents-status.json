@@ -2,16 +2,16 @@
   {
     "id": "percival",
     "name": "Percival",
-    "status": "working",
-    "currentTask": "Dise\u00f1ando mapa del mundo top-down",
-    "lastSeen": 1772320436
+    "status": "sleeping",
+    "currentTask": "zzZ...",
+    "lastSeen": 1772323797
   },
   {
     "id": "forge",
     "name": "Forge",
     "status": "sleeping",
-    "currentTask": "\u2705 Easter eggs completados",
-    "lastSeen": 1772323068
+    "currentTask": "zzZ...",
+    "lastSeen": 1772323797
   },
   {
     "id": "sprite",
