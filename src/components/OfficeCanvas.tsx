@@ -9,6 +9,7 @@ import { ToastContainer } from './ToastContainer';
 import { achievementManager, trackRoomVisit } from '../lib/achievements';
 import { konamiDetector, activatePartyMode, partyState, updatePartyParticles, drawPartyEffects } from '../lib/secrets';
 import { createTreasureChest, updateTreasureChest, drawTreasureChest, type TreasureChest } from '../lib/treasure-chest';
+import { getDayNightOverlay, PHASE_COLORS } from '../lib/day-night';
 
 // ─── Agent types ───────────────────────────────────────────────
 type AgentStatus = 'working' | 'idle' | 'sleeping';
@@ -385,6 +386,10 @@ export function OfficeCanvas({ roomId }: OfficeCanvasProps) {
   function render(ctx: CanvasRenderingContext2D, time: number) {
     ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
 
+    // Day/Night: apply brightness filter to everything drawn below
+    const dayNight = getDayNightOverlay();
+    ctx.filter = `brightness(${dayNight.brightness})`;
+
     const currentRoom = activeRoomRef.current;
 
     // 1. Background
@@ -413,7 +418,28 @@ export function OfficeCanvas({ roomId }: OfficeCanvasProps) {
       }
     }
 
-    // 4. Transition overlay (fade to/from black)
+    // 4. Day/Night overlay + clock + stars
+    // Restore filter before overlay so it's not double-dimmed
+    ctx.filter = 'none';
+
+    // 4a. Stars (night/dusk only, when alpha > 0.2)
+    if ((dayNight.phase === 'night' || dayNight.phase === 'dusk') &&
+        parseFloat(dayNight.color.split(',')[3] ?? '0') > 0.2) {
+      drawStars(ctx, time);
+    }
+
+    // 4b. Color overlay
+    if (dayNight.color !== 'rgba(0, 0, 0, 0)') {
+      ctx.save();
+      ctx.fillStyle = dayNight.color;
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.restore();
+    }
+
+    // 4c. Clock indicator (top-left)
+    drawClock(ctx, dayNight);
+
+    // 5. Transition overlay (fade to/from black)
     const alpha = transitionAlphaRef.current;
     if (alpha > 0) {
       ctx.save();
@@ -640,6 +666,84 @@ export function OfficeCanvas({ roomId }: OfficeCanvasProps) {
     ctx.lineTo(x, y + r);
     ctx.quadraticCurveTo(x, y, x + r, y);
     ctx.closePath();
+  }
+
+  // ── Stars (night/dusk effect) ────────────────────────────────
+  const starsRef = useRef<Array<{ x: number; y: number; size: number; offset: number }>>([]);
+  if (starsRef.current.length === 0) {
+    for (let i = 0; i < 18; i++) {
+      starsRef.current.push({
+        x: Math.random() * CANVAS_W,
+        y: Math.random() * 180,
+        size: Math.random() < 0.4 ? 2 : 1,
+        offset: Math.random() * Math.PI * 2,
+      });
+    }
+  }
+
+  function drawStars(ctx: CanvasRenderingContext2D, time: number) {
+    ctx.save();
+    for (const star of starsRef.current) {
+      const alpha = 0.5 + 0.5 * Math.sin(time * 1.5 + star.offset);
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // ── Clock indicator ──────────────────────────────────────────
+  function drawClock(
+    ctx: CanvasRenderingContext2D,
+    dayNight: ReturnType<typeof getDayNightOverlay>,
+  ) {
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    const timeStr = `${hh}:${mm}`;
+    const labelStr = dayNight.label;
+    const textColor = PHASE_COLORS[dayNight.phase];
+
+    const pad = 8;
+    const timeFont = '8px "Press Start 2P", monospace';
+    const labelFont = '6px "Press Start 2P", monospace';
+
+    ctx.save();
+    ctx.font = timeFont;
+    const timeW = ctx.measureText(timeStr).width;
+    ctx.font = labelFont;
+    const labelW = ctx.measureText(labelStr).width;
+    const contentW = Math.max(timeW, labelW);
+    const boxW = contentW + pad * 2;
+    const boxH = 8 + 4 + 6 + pad * 2; // time + gap + label + padding
+
+    const bx = 10;
+    const by = 10;
+
+    // Background
+    ctx.globalAlpha = 0.7;
+    ctx.fillStyle = '#000000';
+    ctx.beginPath();
+    ctx.roundRect(bx, by, boxW, boxH, 4);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // Time
+    ctx.font = timeFont;
+    ctx.fillStyle = textColor;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText(timeStr, bx + pad, by + pad);
+
+    // Label
+    ctx.font = labelFont;
+    ctx.fillStyle = textColor;
+    ctx.globalAlpha = 0.8;
+    ctx.fillText(labelStr, bx + pad, by + pad + 8 + 4);
+
+    ctx.restore();
   }
 
   // ── Mouse interaction ────────────────────────────────────────
